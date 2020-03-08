@@ -1,0 +1,1 @@
+/Users/frederiksherman/.config/nvim/init.vim
