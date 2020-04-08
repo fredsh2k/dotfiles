@@ -17,7 +17,7 @@ Plug 'vim-scripts/paredit.vim' "wrap, move, delete parenthesis
 Plug 'fatih/vim-go' "Go
 
 Plug 'tpope/vim-fireplace' "Clojure
-Plug 'venantius/vim-cljfmt' "formetter
+Plug 'venantius/vim-cljfmt' "formatter
 Plug 'venantius/vim-eastwood' "linting
 Plug 'vim-syntastic/syntastic'
 Plug 'Olical/conjure', { 'tag': 'v2.1.2', 'do': 'bin/compile'}
