@@ -1,7 +1,10 @@
 #!/bin/sh
 
 apt() {
-    apt install zsh -y
+    apt update 
+    apt install -y curl git jq zsh 
+    apt-get autoremove -y
+    apt-get clean -y
 }
 
 zshrc() {
