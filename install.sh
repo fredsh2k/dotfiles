@@ -1,6 +1,6 @@
 #!/bin/sh
 
-apt() {
+aptrc() {
     apt update 
     apt install -y curl git jq zsh 
     apt-get autoremove -y
@@ -22,7 +22,7 @@ zshrc() {
     cat .zshrc > $HOME/.zshrc
 }
 
-apt
+aptrc
 
 zshrc
 
