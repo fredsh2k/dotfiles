@@ -1,5 +1,9 @@
 #!/bin/sh
 
+apt() {
+    apt install zsh -y
+}
+
 zshrc() {
     echo "==========================================================="
     echo "             cloning zsh-autosuggestions                   "
@@ -15,4 +19,7 @@ zshrc() {
     cat .zshrc > $HOME/.zshrc
 }
 
+apt
+
 zshrc
+
