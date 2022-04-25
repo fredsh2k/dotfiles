@@ -1,8 +1,8 @@
 #!/bin/sh
 
 aptrc() {
-    apt update 
-    apt install -y curl git jq zsh 
+    apt-get update 
+    apt-get install -y zsh 
     apt-get autoremove -y
     apt-get clean -y
 }
@@ -22,7 +22,7 @@ zshrc() {
     cat .zshrc > $HOME/.zshrc
 }
 
-#aptrc
+aptrc
 
 zshrc
 
