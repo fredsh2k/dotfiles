@@ -22,7 +22,7 @@ zshrc() {
     cat .zshrc > $HOME/.zshrc
 }
 
-aptrc
+#aptrc
 
 zshrc
 
