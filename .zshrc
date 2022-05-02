@@ -9,6 +9,8 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
-# CTRL+R for fzf-history-widget
+# CTRL+R for fzf history
+# ESC+C for fzf cd
+# CTRL+T for fzf find
 source /usr/share/doc/fzf/examples/key-bindings.zsh
 
