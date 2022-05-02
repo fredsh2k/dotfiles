@@ -2,10 +2,10 @@
 
 # apt 
 echo "updating apt, installing packages, cleaning apt"
-apt update 
-apt install -y zsh fzf
-apt autoremove -y
-apt clean -y
+sudo apt update 
+sudo apt install -y zsh fzf
+sudo apt autoremove -y
+sudo apt clean -y
 
 # zsh
 echo "installing zsh-autosuggestions"
