@@ -3,7 +3,7 @@
 # apt 
 echo "updating apt, installing packages, cleaning apt"
 sudo apt update 
-sudo apt install -y zsh fzf
+sudo apt install -y zsh fzf vim
 sudo apt autoremove -y
 sudo apt clean -y
 
