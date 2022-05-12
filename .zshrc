@@ -14,7 +14,3 @@ source $ZSH/oh-my-zsh.sh
 # ESC+C for fzf cd
 # CTRL+T for fzf find
 source /usr/share/doc/fzf/examples/key-bindings.zsh
-
-# aliases
-alias vi=lvim
-alias vim=lvim
