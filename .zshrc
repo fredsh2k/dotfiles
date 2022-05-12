@@ -1,3 +1,4 @@
+# zsh
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="spaceship"
 
@@ -14,3 +15,6 @@ source $ZSH/oh-my-zsh.sh
 # CTRL+T for fzf find
 source /usr/share/doc/fzf/examples/key-bindings.zsh
 
+# aliases
+alias vi=lvim
+alias vim=lvim

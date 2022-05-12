@@ -36,8 +36,6 @@ bash <(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs) -y
 source $HOME/.cargo/env
 
 yes | bash <(curl -s https://raw.githubusercontent.com/lunarvim/lunarvim/master/utils/installer/install.sh) # answer no to all prompts
-alias vi=lvim
-alias vim=lvim
 
 echo "copy .zsrhc to HOME"
 cat .zshrc > $HOME/.zshrc
