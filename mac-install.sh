@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# install.sh — minimal bootstrap for Codespaces / Linux
-# Runs automatically when this repo is set as your dotfiles repo:
-#   https://github.com/settings/codespaces
-#
-# Installs: zsh, fzf (with ctrl-r history), zsh-autosuggestions,
-#           zsh-syntax-highlighting, oh-my-zsh, dotfiles, Copilot symlinks
+# mac-install.sh — full macOS bootstrap
+# Usage: curl -fsSL https://raw.githubusercontent.com/fredsh2k/dotfiles/main/mac-install.sh | bash
+# Or:    clone manually and run: bash mac-install.sh
 
 set -e
 
@@ -14,24 +11,41 @@ DOTFILES_GIT="$HOME/.dotfiles.git"
 info() { printf '\033[0;34m[info]\033[0m  %s\n' "$*"; }
 ok()   { printf '\033[0;32m[ok]\033[0m    %s\n' "$*"; }
 warn() { printf '\033[0;33m[warn]\033[0m  %s\n' "$*"; }
+die()  { printf '\033[0;31m[error]\033[0m %s\n' "$*" >&2; exit 1; }
+
+[[ "$(uname -s)" == "Darwin" ]] || die "This script is macOS only. For Linux/Codespaces use install.sh"
 
 # ---------------------------------------------------------------------------
-# apt packages
+# Xcode Command Line Tools
 # ---------------------------------------------------------------------------
-info "Installing packages via apt..."
-sudo apt-get update -qq
-sudo apt-get install -y -qq zsh fzf ripgrep fd-find bat curl unzip
+if ! xcode-select -p &>/dev/null; then
+  info "Installing Xcode Command Line Tools..."
+  xcode-select --install
+  read -r -p "Press Enter once the installation is complete..."
+fi
+ok "Xcode CLT ready"
 
-# fd and bat have different binary names on Debian/Ubuntu
-if command -v fdfind &>/dev/null && ! command -v fd &>/dev/null; then
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+# ---------------------------------------------------------------------------
+# Homebrew
+# ---------------------------------------------------------------------------
+if ! command -v brew &>/dev/null; then
+  info "Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
-if command -v batcat &>/dev/null && ! command -v bat &>/dev/null; then
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
-fi
-ok "apt packages installed"
+eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv)"
+ok "Homebrew ready"
+
+# ---------------------------------------------------------------------------
+# Packages
+# ---------------------------------------------------------------------------
+info "Installing packages via Homebrew..."
+brew install \
+  git zsh fzf neovim zellij ripgrep fd sd bat bun gh nvm rbenv \
+  zsh-vi-mode zsh-autosuggestions zsh-syntax-highlighting \
+  lazygit stylua lua-language-server
+
+brew install --cask ghostty 2>/dev/null || true
+ok "Homebrew packages installed"
 
 # ---------------------------------------------------------------------------
 # oh-my-zsh
@@ -44,7 +58,6 @@ ok "oh-my-zsh ready"
 
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
-# plugins
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
   git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions" --depth=1
 fi
@@ -54,8 +67,6 @@ fi
 if [[ ! -d "$ZSH_CUSTOM/plugins/fzf-tab" ]]; then
   git clone https://github.com/Aloxaf/fzf-tab "$ZSH_CUSTOM/plugins/fzf-tab" --depth=1
 fi
-
-# spaceship theme
 if [[ ! -d "$ZSH_CUSTOM/themes/spaceship-prompt" ]]; then
   git clone https://github.com/spaceship-prompt/spaceship-prompt "$ZSH_CUSTOM/themes/spaceship-prompt" --depth=1
   ln -sf "$ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme" "$ZSH_CUSTOM/themes/spaceship.zsh-theme"
@@ -63,18 +74,13 @@ fi
 ok "oh-my-zsh plugins & theme ready"
 
 # ---------------------------------------------------------------------------
-# fzf shell integration (ctrl-r history, ctrl-t file search, alt-c cd)
+# opencode
 # ---------------------------------------------------------------------------
-if [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]]; then
-  # Debian/Ubuntu fzf ships integration scripts separately
-  mkdir -p "$HOME/.fzf"
-  cp /usr/share/doc/fzf/examples/key-bindings.zsh "$HOME/.fzf/key-bindings.zsh" 2>/dev/null || true
-  cp /usr/share/doc/fzf/examples/completion.zsh   "$HOME/.fzf/completion.zsh"   2>/dev/null || true
-elif [[ ! -f "$HOME/.fzf.zsh" ]] && command -v fzf &>/dev/null; then
-  # fzf installed from source — run its install script for shell integration
-  "$(command -v fzf)" --zsh > "$HOME/.fzf.zsh" 2>/dev/null || true
+if ! command -v opencode &>/dev/null && [[ ! -x "$HOME/.opencode/bin/opencode" ]]; then
+  info "Installing opencode..."
+  curl -fsSL https://opencode.ai/install | bash
 fi
-ok "fzf shell integration ready"
+ok "opencode ready"
 
 # ---------------------------------------------------------------------------
 # Dotfiles (bare git repo)
@@ -103,34 +109,43 @@ ok "Dotfiles checked out"
 # ---------------------------------------------------------------------------
 # Copilot skill symlinks
 # ---------------------------------------------------------------------------
-mkdir -p "$HOME/.copilot/skills" "$HOME/.copilot/instructions"
+if command -v copilot &>/dev/null || [[ -d "$HOME/.copilot" ]]; then
+  info "Setting up Copilot skill symlinks..."
+  mkdir -p "$HOME/.copilot/skills" "$HOME/.copilot/instructions"
 
-for skill in "$HOME/.agents/skills"/*/; do
-  name="$(basename "$skill")"
-  target="$HOME/.copilot/skills/$name"
-  [[ ! -L "$target" ]] && ln -s "$skill" "$target" && ok "  linked skill: $name"
-done
+  for skill in "$HOME/.agents/skills"/*/; do
+    name="$(basename "$skill")"
+    target="$HOME/.copilot/skills/$name"
+    [[ ! -L "$target" ]] && ln -s "$skill" "$target" && ok "  linked skill: $name"
+  done
 
-instr_src="$HOME/.agents/instructions/fredsh2k.instructions.md"
-instr_dst="$HOME/.copilot/instructions/fredsh2k.instructions.md"
-[[ -f "$instr_src" && ! -L "$instr_dst" ]] && ln -s "$instr_src" "$instr_dst" && ok "  linked instructions"
+  instr_src="$HOME/.agents/instructions/fredsh2k.instructions.md"
+  instr_dst="$HOME/.copilot/instructions/fredsh2k.instructions.md"
+  [[ -f "$instr_src" && ! -L "$instr_dst" ]] && ln -s "$instr_src" "$instr_dst" && ok "  linked instructions"
+fi
 
 # ---------------------------------------------------------------------------
-# Set zsh as default shell
+# Secrets placeholder
 # ---------------------------------------------------------------------------
-ZSH_PATH="$(command -v zsh)"
-if [[ "$SHELL" != "$ZSH_PATH" ]]; then
-  if grep -qF "$ZSH_PATH" /etc/shells 2>/dev/null; then
-    chsh -s "$ZSH_PATH" 2>/dev/null || warn "Could not change default shell — run manually: chsh -s $ZSH_PATH"
-  else
-    warn "zsh not in /etc/shells — skipping chsh"
-  fi
+if [[ ! -f "$HOME/.zshrc.local" ]]; then
+  info "Creating ~/.zshrc.local placeholder for secrets..."
+  cat > "$HOME/.zshrc.local" <<'SECRETS'
+# Secrets — NOT tracked in git
+# Fill in your tokens below after rotating them.
+
+# GitHub Go proxy token (https://github.com/settings/tokens)
+export GOPROXY=https://nobody:REPLACE_ME@goproxy.githubapp.com/mod,https://proxy.golang.org/,direct
+SECRETS
+  warn "~/.zshrc.local created — fill in your GOPROXY token before using Go"
 fi
 
 # ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 ok ""
-ok "Bootstrap complete!"
-ok "Open a new terminal (or run: exec zsh) to start using zsh with dotfiles."
-ok "Copilot skills and instructions are symlinked and ready."
+ok "Bootstrap complete! Open a new terminal to apply all changes."
+ok "Next steps:"
+ok "  1. Fill in your GOPROXY token in ~/.zshrc.local"
+ok "  2. Run 'gh auth login' to authenticate GitHub CLI"
+ok "  3. Open nvim — LazyVim will auto-install plugins on first launch"
+ok "  4. Run 'opencode /connect' to set up your AI provider"

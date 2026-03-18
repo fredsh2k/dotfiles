@@ -114,8 +114,17 @@ source $ZSH/oh-my-zsh.sh
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 # vi mode & fzf
-zvm_after_init_commands+=('[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh')
-source /opt/homebrew/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh
+zvm_after_init_commands+=('
+  [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+  [ -f ~/.fzf/key-bindings.zsh ] && source ~/.fzf/key-bindings.zsh
+  [ -f ~/.fzf/completion.zsh ]   && source ~/.fzf/completion.zsh
+')
+# zsh-vi-mode: Homebrew path on macOS, oh-my-zsh custom plugin on Linux
+if [[ -f /opt/homebrew/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh ]]; then
+  source /opt/homebrew/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh
+elif [[ -f "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-vi-mode/zsh-vi-mode.plugin.zsh ]]; then
+  source "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-vi-mode/zsh-vi-mode.plugin.zsh"
+fi
 
 # Spaceship prompt customization - hide language/runtime versions
 export SPACESHIP_GOLANG_SHOW=false
