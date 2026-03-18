@@ -1,0 +1,24 @@
+layout {
+    default_tab_template {
+        children
+        pane size=2 borderless=true {
+            plugin location="status-bar"
+        }
+    }
+
+    tab name="dev" focus=true {
+        pane split_direction="vertical" {
+            pane size="20%" name="copilot" focus=true command="copilot"
+            pane size="60%" stacked=true {
+                pane name="vim1" focus=true expanded=true
+                pane name="vim2"
+                pane name="vim3"
+            }
+            pane size="20%" stacked=true {
+                pane name="term1" expanded=true
+                pane name="term2"
+                pane name="term3"
+            }
+        }
+    }
+}
