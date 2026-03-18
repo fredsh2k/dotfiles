@@ -3,7 +3,8 @@
 # Runs automatically when this repo is set as your dotfiles repo in:
 #   https://github.com/settings/codespaces
 #
-# Installs: zsh, fzf (ctrl-r history), zsh-autosuggestions,
+# Skips steps that are already satisfied (idempotent).
+# Installs: fzf (ctrl-r history), zsh-autosuggestions,
 #           zsh-syntax-highlighting, oh-my-zsh, dotfiles checkout
 
 set -e
@@ -14,18 +15,31 @@ DOTFILES_GIT="$HOME/.dotfiles.git"
 info() { printf '\033[0;34m[info]\033[0m  %s\n' "$*"; }
 ok()   { printf '\033[0;32m[ok]\033[0m    %s\n' "$*"; }
 warn() { printf '\033[0;33m[warn]\033[0m  %s\n' "$*"; }
+skip() { printf '\033[0;90m[skip]\033[0m  %s\n' "$*"; }
 
-[[ "$(uname -s)" == "Linux" ]] || { warn "This script is for Linux. On macOS use mac-install.sh"; }
+[[ "$(uname -s)" == "Linux" ]] || warn "This script is for Linux. On macOS use mac-install.sh"
 
 # ---------------------------------------------------------------------------
-# apt packages
+# apt packages — only install what's missing
 # ---------------------------------------------------------------------------
-info "Installing packages via apt..."
-# Allow update to fail on bad third-party keys (common in Codespaces universal image)
-sudo apt-get update -qq || true
-sudo apt-get install -y -qq zsh fzf ripgrep fd-find bat curl git unzip
+APT_PKGS=()
+command -v zsh    &>/dev/null || APT_PKGS+=(zsh)
+command -v fzf    &>/dev/null || APT_PKGS+=(fzf)
+command -v rg     &>/dev/null || APT_PKGS+=(ripgrep)
+command -v bat    &>/dev/null && command -v batcat &>/dev/null || { command -v bat &>/dev/null || APT_PKGS+=(bat); }
+command -v fd     &>/dev/null || command -v fdfind &>/dev/null || APT_PKGS+=(fd-find)
+command -v unzip  &>/dev/null || APT_PKGS+=(unzip)
 
-# Debian/Ubuntu ship fd as fdfind and bat as batcat — alias them
+if [[ ${#APT_PKGS[@]} -gt 0 ]]; then
+  info "Installing via apt: ${APT_PKGS[*]}"
+  # Allow update to fail on bad third-party keys (common in Codespaces universal image)
+  sudo apt-get update -qq || true
+  sudo apt-get install -y -qq "${APT_PKGS[@]}"
+else
+  skip "all apt packages already present"
+fi
+
+# Debian/Ubuntu ship fd as fdfind and bat as batcat — symlink to standard names
 if command -v fdfind &>/dev/null && ! command -v fd &>/dev/null; then
   mkdir -p "$HOME/.local/bin"
   ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
@@ -34,7 +48,6 @@ if command -v batcat &>/dev/null && ! command -v bat &>/dev/null; then
   mkdir -p "$HOME/.local/bin"
   ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
 fi
-ok "apt packages installed"
 
 # ---------------------------------------------------------------------------
 # oh-my-zsh
@@ -42,20 +55,32 @@ ok "apt packages installed"
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
   info "Installing oh-my-zsh..."
   RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+else
+  skip "oh-my-zsh already installed"
 fi
-ok "oh-my-zsh ready"
 
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
+  info "Installing zsh-autosuggestions..."
   git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions" --depth=1
+else
+  skip "zsh-autosuggestions already installed"
 fi
+
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
+  info "Installing zsh-syntax-highlighting..."
   git clone https://github.com/zsh-users/zsh-syntax-highlighting "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" --depth=1
+else
+  skip "zsh-syntax-highlighting already installed"
 fi
+
 if [[ ! -d "$ZSH_CUSTOM/themes/spaceship-prompt" ]]; then
+  info "Installing spaceship theme..."
   git clone https://github.com/spaceship-prompt/spaceship-prompt "$ZSH_CUSTOM/themes/spaceship-prompt" --depth=1
   ln -sf "$ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme" "$ZSH_CUSTOM/themes/spaceship.zsh-theme"
+else
+  skip "spaceship theme already installed"
 fi
 ok "oh-my-zsh plugins & theme ready"
 
@@ -66,14 +91,16 @@ if [[ -d /usr/share/doc/fzf/examples ]]; then
   mkdir -p "$HOME/.fzf"
   cp /usr/share/doc/fzf/examples/key-bindings.zsh "$HOME/.fzf/key-bindings.zsh" 2>/dev/null || true
   cp /usr/share/doc/fzf/examples/completion.zsh   "$HOME/.fzf/completion.zsh"   2>/dev/null || true
+  ok "fzf shell integration ready"
+else
+  skip "fzf examples dir not found — integration skipped"
 fi
-ok "fzf shell integration ready"
 
 # ---------------------------------------------------------------------------
 # Dotfiles (bare git repo)
 # ---------------------------------------------------------------------------
 if [[ -d "$DOTFILES_GIT" ]]; then
-  warn "~/.dotfiles.git already exists — skipping clone"
+  skip "~/.dotfiles.git already exists"
 else
   info "Cloning dotfiles..."
   git clone --bare "$DOTFILES_REPO" "$DOTFILES_GIT"
@@ -97,13 +124,14 @@ ok "Dotfiles checked out"
 # Set zsh as default shell
 # ---------------------------------------------------------------------------
 ZSH_PATH="$(command -v zsh)"
-if [[ "$SHELL" != "$ZSH_PATH" ]]; then
-  if grep -qF "$ZSH_PATH" /etc/shells 2>/dev/null; then
-    chsh -s "$ZSH_PATH" 2>/dev/null || warn "Could not chsh — run manually: chsh -s $ZSH_PATH"
-  else
+if [[ "$SHELL" == "$ZSH_PATH" ]]; then
+  skip "zsh already default shell"
+else
+  if ! grep -qF "$ZSH_PATH" /etc/shells 2>/dev/null; then
     echo "$ZSH_PATH" | sudo tee -a /etc/shells >/dev/null
-    chsh -s "$ZSH_PATH" 2>/dev/null || warn "Could not chsh — run manually: chsh -s $ZSH_PATH"
   fi
+  chsh -s "$ZSH_PATH" 2>/dev/null || warn "Could not chsh — run manually: chsh -s $ZSH_PATH"
+  ok "zsh set as default shell"
 fi
 
 # ---------------------------------------------------------------------------
