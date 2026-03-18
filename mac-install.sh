@@ -36,16 +36,37 @@ eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shell
 ok "Homebrew ready"
 
 # ---------------------------------------------------------------------------
-# Packages
+# CLI tools
 # ---------------------------------------------------------------------------
-info "Installing packages via Homebrew..."
+info "Installing CLI tools..."
 brew install \
-  git zsh fzf neovim zellij ripgrep fd sd bat bun gh nvm rbenv \
-  zsh-vi-mode zsh-autosuggestions zsh-syntax-highlighting \
-  lazygit stylua lua-language-server
+  git \
+  zsh \
+  fzf \
+  ripgrep \
+  fd \
+  sd \
+  bat \
+  gh \
+  nvm \
+  rbenv \
+  bun \
+  lazygit \
+  neovim \
+  zellij \
+  stylua \
+  lua-language-server \
+  zsh-vi-mode \
+  zsh-autosuggestions \
+  zsh-syntax-highlighting
+ok "CLI tools installed"
 
-brew install --cask ghostty 2>/dev/null || true
-ok "Homebrew packages installed"
+# ---------------------------------------------------------------------------
+# GUI apps (casks)
+# ---------------------------------------------------------------------------
+info "Installing GUI apps..."
+brew install --cask ghostty 2>/dev/null || warn "ghostty cask failed — install manually"
+ok "GUI apps installed"
 
 # ---------------------------------------------------------------------------
 # oh-my-zsh
@@ -88,7 +109,7 @@ ok "opencode ready"
 if [[ -d "$DOTFILES_GIT" ]]; then
   warn "~/.dotfiles.git already exists — skipping clone"
 else
-  info "Cloning dotfiles bare repo..."
+  info "Cloning dotfiles..."
   git clone --bare "$DOTFILES_REPO" "$DOTFILES_GIT"
 fi
 
@@ -148,4 +169,4 @@ ok "Next steps:"
 ok "  1. Fill in your GOPROXY token in ~/.zshrc.local"
 ok "  2. Run 'gh auth login' to authenticate GitHub CLI"
 ok "  3. Open nvim — LazyVim will auto-install plugins on first launch"
-ok "  4. Run 'opencode /connect' to set up your AI provider"
+ok "  4. Run 'opencode' to set up your AI provider"

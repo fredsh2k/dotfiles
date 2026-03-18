@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# install.sh — minimal bootstrap for Codespaces / Linux
-# Runs automatically when this repo is set as your dotfiles repo:
+# install.sh — Linux / Codespaces bootstrap
+# Runs automatically when this repo is set as your dotfiles repo in:
 #   https://github.com/settings/codespaces
 #
-# Installs: zsh, fzf (with ctrl-r history), zsh-autosuggestions,
-#           zsh-syntax-highlighting, oh-my-zsh, dotfiles, Copilot symlinks
+# Installs: zsh, fzf (ctrl-r history), zsh-autosuggestions,
+#           zsh-syntax-highlighting, oh-my-zsh, dotfiles checkout
 
 set -e
 
@@ -15,14 +15,16 @@ info() { printf '\033[0;34m[info]\033[0m  %s\n' "$*"; }
 ok()   { printf '\033[0;32m[ok]\033[0m    %s\n' "$*"; }
 warn() { printf '\033[0;33m[warn]\033[0m  %s\n' "$*"; }
 
+[[ "$(uname -s)" == "Linux" ]] || { warn "This script is for Linux. On macOS use mac-install.sh"; }
+
 # ---------------------------------------------------------------------------
 # apt packages
 # ---------------------------------------------------------------------------
 info "Installing packages via apt..."
 sudo apt-get update -qq
-sudo apt-get install -y -qq zsh fzf ripgrep fd-find bat curl unzip
+sudo apt-get install -y -qq zsh fzf ripgrep fd-find bat curl git unzip
 
-# fd and bat have different binary names on Debian/Ubuntu
+# Debian/Ubuntu ship fd as fdfind and bat as batcat — alias them
 if command -v fdfind &>/dev/null && ! command -v fd &>/dev/null; then
   mkdir -p "$HOME/.local/bin"
   ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
@@ -44,18 +46,12 @@ ok "oh-my-zsh ready"
 
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
-# plugins
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
   git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions" --depth=1
 fi
 if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
   git clone https://github.com/zsh-users/zsh-syntax-highlighting "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" --depth=1
 fi
-if [[ ! -d "$ZSH_CUSTOM/plugins/fzf-tab" ]]; then
-  git clone https://github.com/Aloxaf/fzf-tab "$ZSH_CUSTOM/plugins/fzf-tab" --depth=1
-fi
-
-# spaceship theme
 if [[ ! -d "$ZSH_CUSTOM/themes/spaceship-prompt" ]]; then
   git clone https://github.com/spaceship-prompt/spaceship-prompt "$ZSH_CUSTOM/themes/spaceship-prompt" --depth=1
   ln -sf "$ZSH_CUSTOM/themes/spaceship-prompt/spaceship.zsh-theme" "$ZSH_CUSTOM/themes/spaceship.zsh-theme"
@@ -63,16 +59,12 @@ fi
 ok "oh-my-zsh plugins & theme ready"
 
 # ---------------------------------------------------------------------------
-# fzf shell integration (ctrl-r history, ctrl-t file search, alt-c cd)
+# fzf shell integration — ctrl-r history, ctrl-t file search, alt-c cd
 # ---------------------------------------------------------------------------
-if [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]]; then
-  # Debian/Ubuntu fzf ships integration scripts separately
+if [[ -d /usr/share/doc/fzf/examples ]]; then
   mkdir -p "$HOME/.fzf"
   cp /usr/share/doc/fzf/examples/key-bindings.zsh "$HOME/.fzf/key-bindings.zsh" 2>/dev/null || true
   cp /usr/share/doc/fzf/examples/completion.zsh   "$HOME/.fzf/completion.zsh"   2>/dev/null || true
-elif [[ ! -f "$HOME/.fzf.zsh" ]] && command -v fzf &>/dev/null; then
-  # fzf installed from source — run its install script for shell integration
-  "$(command -v fzf)" --zsh > "$HOME/.fzf.zsh" 2>/dev/null || true
 fi
 ok "fzf shell integration ready"
 
@@ -82,7 +74,7 @@ ok "fzf shell integration ready"
 if [[ -d "$DOTFILES_GIT" ]]; then
   warn "~/.dotfiles.git already exists — skipping clone"
 else
-  info "Cloning dotfiles bare repo..."
+  info "Cloning dotfiles..."
   git clone --bare "$DOTFILES_REPO" "$DOTFILES_GIT"
 fi
 
@@ -101,29 +93,15 @@ fi
 ok "Dotfiles checked out"
 
 # ---------------------------------------------------------------------------
-# Copilot skill symlinks
-# ---------------------------------------------------------------------------
-mkdir -p "$HOME/.copilot/skills" "$HOME/.copilot/instructions"
-
-for skill in "$HOME/.agents/skills"/*/; do
-  name="$(basename "$skill")"
-  target="$HOME/.copilot/skills/$name"
-  [[ ! -L "$target" ]] && ln -s "$skill" "$target" && ok "  linked skill: $name"
-done
-
-instr_src="$HOME/.agents/instructions/fredsh2k.instructions.md"
-instr_dst="$HOME/.copilot/instructions/fredsh2k.instructions.md"
-[[ -f "$instr_src" && ! -L "$instr_dst" ]] && ln -s "$instr_src" "$instr_dst" && ok "  linked instructions"
-
-# ---------------------------------------------------------------------------
 # Set zsh as default shell
 # ---------------------------------------------------------------------------
 ZSH_PATH="$(command -v zsh)"
 if [[ "$SHELL" != "$ZSH_PATH" ]]; then
   if grep -qF "$ZSH_PATH" /etc/shells 2>/dev/null; then
-    chsh -s "$ZSH_PATH" 2>/dev/null || warn "Could not change default shell — run manually: chsh -s $ZSH_PATH"
+    chsh -s "$ZSH_PATH" 2>/dev/null || warn "Could not chsh — run manually: chsh -s $ZSH_PATH"
   else
-    warn "zsh not in /etc/shells — skipping chsh"
+    echo "$ZSH_PATH" | sudo tee -a /etc/shells >/dev/null
+    chsh -s "$ZSH_PATH" 2>/dev/null || warn "Could not chsh — run manually: chsh -s $ZSH_PATH"
   fi
 fi
 
@@ -132,5 +110,7 @@ fi
 # ---------------------------------------------------------------------------
 ok ""
 ok "Bootstrap complete!"
-ok "Open a new terminal (or run: exec zsh) to start using zsh with dotfiles."
-ok "Copilot skills and instructions are symlinked and ready."
+ok "Run 'exec zsh' or open a new terminal to start using zsh."
+ok "ctrl-r  — fzf history search"
+ok "ctrl-t  — fzf file search"
+ok "alt-c   — fzf cd into directory"
