@@ -21,7 +21,8 @@ warn() { printf '\033[0;33m[warn]\033[0m  %s\n' "$*"; }
 # apt packages
 # ---------------------------------------------------------------------------
 info "Installing packages via apt..."
-sudo apt-get update -qq
+# Allow update to fail on bad third-party keys (common in Codespaces universal image)
+sudo apt-get update -qq || true
 sudo apt-get install -y -qq zsh fzf ripgrep fd-find bat curl git unzip
 
 # Debian/Ubuntu ship fd as fdfind and bat as batcat — alias them
