@@ -20,33 +20,15 @@ skip() { printf '\033[0;90m[skip]\033[0m  %s\n' "$*"; }
 [[ "$(uname -s)" == "Linux" ]] || warn "This script is for Linux. On macOS use mac-install.sh"
 
 # ---------------------------------------------------------------------------
-# apt packages — only install what's missing
+# fzf — only thing not pre-installed in the Codespaces universal image
 # ---------------------------------------------------------------------------
-APT_PKGS=()
-command -v zsh    &>/dev/null || APT_PKGS+=(zsh)
-command -v fzf    &>/dev/null || APT_PKGS+=(fzf)
-command -v rg     &>/dev/null || APT_PKGS+=(ripgrep)
-command -v bat    &>/dev/null && command -v batcat &>/dev/null || { command -v bat &>/dev/null || APT_PKGS+=(bat); }
-command -v fd     &>/dev/null || command -v fdfind &>/dev/null || APT_PKGS+=(fd-find)
-command -v unzip  &>/dev/null || APT_PKGS+=(unzip)
-
-if [[ ${#APT_PKGS[@]} -gt 0 ]]; then
-  info "Installing via apt: ${APT_PKGS[*]}"
+if ! command -v fzf &>/dev/null; then
+  info "Installing fzf..."
   # Allow update to fail on bad third-party keys (common in Codespaces universal image)
   sudo apt-get update -qq || true
-  sudo apt-get install -y -qq "${APT_PKGS[@]}"
+  sudo apt-get install -y -qq fzf
 else
-  skip "all apt packages already present"
-fi
-
-# Debian/Ubuntu ship fd as fdfind and bat as batcat — symlink to standard names
-if command -v fdfind &>/dev/null && ! command -v fd &>/dev/null; then
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
-fi
-if command -v batcat &>/dev/null && ! command -v bat &>/dev/null; then
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
+  skip "fzf already installed"
 fi
 
 # ---------------------------------------------------------------------------
