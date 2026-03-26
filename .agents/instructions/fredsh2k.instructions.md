@@ -22,3 +22,5 @@ Make sure to create sub-issues where appropriate for easier tracking using the g
 When analyzing gh pr checks failures, always save the logs to a file and use ripgrep to search for relevant error messages instead of running gh pr checks repeatedly.
 Do not reply to people comments on PRs.
 
+Before cloning any repo, always check if it already exists under /Users/fsherman/Code/GitHub/ first.
+

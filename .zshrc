@@ -21,11 +21,11 @@ ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
 source $ZSH/oh-my-zsh.sh
 
 # vi mode & fzf
-zvm_after_init_commands+=('
+# zvm_after_init is called by zsh-vi-mode after its own init (via precmd on first prompt)
+# This re-applies fzf key bindings which zvm would otherwise override
+function zvm_after_init() {
   [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-  [ -f ~/.fzf/key-bindings.zsh ] && source ~/.fzf/key-bindings.zsh
-  [ -f ~/.fzf/completion.zsh ]   && source ~/.fzf/completion.zsh
-')
+}
 # zsh-vi-mode: Homebrew path on macOS, oh-my-zsh custom plugin on Linux
 if [[ -f /opt/homebrew/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh ]]; then
   source /opt/homebrew/opt/zsh-vi-mode/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh
@@ -108,4 +108,6 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 
 # opencode
 export PATH="/Users/fsherman/.opencode/bin:$PATH"
+alias opencode-server='OPENCODE_SERVER_PASSWORD=ocfredoc opencode web --port 4096 --hostname 0.0.0.0 --mdns'
+alias opencode-attach='opencode attach http://localhost:4096'
 
