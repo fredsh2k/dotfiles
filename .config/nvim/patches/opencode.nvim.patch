@@ -55,3 +55,15 @@ index d2a5c26..13b6ea0 100644
  end
  
  function Context:resume()
+diff --git a/lua/opencode/events.lua b/lua/opencode/events.lua
+index 09bbe2b..34b5744 100644
+--- a/lua/opencode/events.lua
++++ b/lua/opencode/events.lua
+@@ -26,6 +26,7 @@ M.connected_server = nil
+ ---@param server opencode.cli.server.Server
+ function M.connect(server)
+   M.disconnect()
++  M.connected_server = server  -- set immediately so subsequent server.get() calls use this server
+ 
+   require("opencode.promise")
+     .resolve(server)
