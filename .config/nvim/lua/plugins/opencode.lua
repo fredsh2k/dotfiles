@@ -34,13 +34,37 @@ return {
 
     vim.o.autoread = true -- Auto-reload files edited by opencode
 
-    -- Resolve @this eagerly so the actual file path + line range appears in the prompt
-    -- instead of the literal "@this" placeholder. Works for both normal (cursor position)
-    -- and visual (line range) modes, and for snacks git diff preview buffers.
+    -- Resolve the file location eagerly so the actual path + line range appears in the
+    -- prompt instead of the "@this" placeholder. Handles two cases:
+    --   1. Inside a snacks picker (e.g. git diff, references): read from the current item.
+    --   2. Regular buffer: use Context:this() (cursor or visual selection).
+    -- Always auto-submits after the user confirms the prompt.
     local function ask_with_location()
-      local context = require("opencode.context").new()
-      local location = context:this() or ""
-      require("opencode").ask(location .. " ", { context = context })
+      local location = ""
+
+      -- Check if a snacks picker is active
+      local pickers = require("snacks.picker").get()
+      if #pickers > 0 then
+        local picker = pickers[#pickers] -- use most recent
+        local items = picker:selected({ fallback = true })
+        local item = items and items[1]
+        if item and item.file then
+          location = require("opencode.context").format(item.file, {
+            start_line = item.pos and item.pos[1] or nil,
+            start_col = item.pos and item.pos[2] or nil,
+          }) or ""
+        end
+      end
+
+      -- Fall back to context:this() for regular buffers (also handles visual selection)
+      if location == "" then
+        local context = require("opencode.context").new()
+        location = context:this() or ""
+        require("opencode").ask(location .. " ", { context = context, submit = true })
+        return
+      end
+
+      require("opencode").ask(location .. " ", { submit = true })
     end
 
     vim.keymap.set("n", "<leader>oa", ask_with_location, { desc = "Ask opencode" })
