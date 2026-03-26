@@ -9,7 +9,7 @@ layout {
     tab name="dev" focus=true {
         pane split_direction="vertical" {
             pane size="20%" name="opencode" focus=true command="zsh" {
-                args "-c" "opencode attach http://localhost:4096"
+                args "-c" "opencode"
             }
             pane size="60%" name="vim1" focus=true
             pane size="20%" name="term1"
