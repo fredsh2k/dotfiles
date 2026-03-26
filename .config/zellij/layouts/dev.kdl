@@ -8,12 +8,12 @@ layout {
 
     tab name="dev" focus=true {
         pane split_direction="vertical" {
-            pane size="20%" name="opencode" command="zsh" {
-                args "-c" "source ~/.zshrc && opencode-start"
+            pane size="20%" name="opencode" focus=true command="zsh" {
+                args "-c" "source ~/.zshrc && sleep 2 && opencode-tui"
             }
             pane size="60%" name="vim1" focus=true
             pane size="20%" name="term1" command="zsh" {
-                args "-c" "source ~/.zshrc && sleep 2 && opencode-tui"
+                args "-c" "source ~/.zshrc && opencode-start"
             }
         }
     }
