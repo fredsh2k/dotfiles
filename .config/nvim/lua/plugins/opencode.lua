@@ -13,8 +13,8 @@ return {
     vim.g.opencode_opts = {
       -- opencode is managed by Zellij layouts (started with --port 0).
       -- Disable auto-start/stop/toggle since Zellij owns the pane.
+      -- No fixed port: auto-connects to the opencode instance whose CWD matches Neovim's CWD.
       server = {
-        port = 4096, -- fixed web server port, started manually via opencode-server alias
         start = false,
         stop = false,
         toggle = false,
