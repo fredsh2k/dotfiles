@@ -1,8 +1,18 @@
 diff --git a/lua/opencode/context.lua b/lua/opencode/context.lua
-index d2a5c26..e231bb1 100644
+index d2a5c26..a1d0443 100644
 --- a/lua/opencode/context.lua
 +++ b/lua/opencode/context.lua
-@@ -85,6 +85,13 @@ local function highlight(buf, range)
+@@ -17,6 +17,9 @@ local ns_id = vim.api.nvim_create_namespace("OpencodeContext")
+ ---Returns the filename for a buffer if it has one, else nil.
+ ---@param buf number
+ local function get_filename(buf)
++  if not vim.api.nvim_buf_is_valid(buf) then
++    return nil
++  end
+   if vim.api.nvim_get_option_value("buftype", { buf = buf }) == "" then
+     local name = vim.api.nvim_buf_get_name(buf)
+     if name ~= "" then
+@@ -85,6 +88,13 @@ local function highlight(buf, range)
      local line = vim.api.nvim_buf_get_lines(buf, end_row, end_row + 1, false)[1] or ""
      end_col = math.min(range.to[2] + 1, #line)
    end
