@@ -130,7 +130,7 @@ opencode-start() {
 
   local port
   port=$(cat "$port_file")
-  echo "opencode: starting on http://100.103.130.49:$port"
+  echo "opencode: starting on http://100.85.21.13:$port"
   opencode --hostname 0.0.0.0 --port "$port" "$@"
 }
 
@@ -151,6 +151,6 @@ opencode-url() {
   fi
   local port
   port=$(cat "$port_file")
-  echo "http://100.103.130.49:$port"
+  echo "http://100.85.21.13:$port"
 }
 
