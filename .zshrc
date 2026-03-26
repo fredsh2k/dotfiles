@@ -108,6 +108,49 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 
 # opencode
 export PATH="/Users/fsherman/.opencode/bin:$PATH"
-alias opencode-server='OPENCODE_SERVER_PASSWORD=ocfredoc opencode web --port 4096 --hostname 0.0.0.0 --mdns'
-alias opencode-attach='opencode attach http://localhost:4096'
+
+# Start opencode with a stable random port per project.
+# Stores the port in .opencode-port at the git root (or CWD if not in a git repo).
+# Usage: opencode-start [opencode args...]
+opencode-start() {
+  local port_file
+  local git_root
+  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -n "$git_root" ]]; then
+    port_file="$git_root/.opencode-port"
+  else
+    port_file="$PWD/.opencode-port"
+  fi
+
+  if [[ ! -f "$port_file" ]]; then
+    local port=$(( RANDOM % 50001 + 10000 ))
+    echo "$port" > "$port_file"
+    echo "opencode: assigned port $port (saved to $port_file)"
+  fi
+
+  local port
+  port=$(cat "$port_file")
+  echo "opencode: starting on http://100.103.130.49:$port"
+  opencode --hostname 0.0.0.0 --port "$port" "$@"
+}
+
+# Print the opencode web URL for the current project
+opencode-url() {
+  local port_file
+  local git_root
+  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -n "$git_root" ]]; then
+    port_file="$git_root/.opencode-port"
+  else
+    port_file="$PWD/.opencode-port"
+  fi
+
+  if [[ ! -f "$port_file" ]]; then
+    echo "No .opencode-port found. Run opencode-start first."
+    return 1
+  fi
+  local port
+  port=$(cat "$port_file")
+  echo "http://100.103.130.49:$port"
+}
 
