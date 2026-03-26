@@ -109,18 +109,10 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 # opencode
 export PATH="/Users/fsherman/.opencode/bin:$PATH"
 
-# Start opencode with a stable random port per project.
-# Stores the port in .opencode-port at the git root (or CWD if not in a git repo).
-# Usage: opencode-start [opencode args...]
+# Start opencode web server with a stable random port, always scoped to $HOME.
+# Port is stored in ~/.opencode-port and reused across sessions.
 opencode-start() {
-  local port_file
-  local git_root
-  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-  if [[ -n "$git_root" ]]; then
-    port_file="$git_root/.opencode-port"
-  else
-    port_file="$PWD/.opencode-port"
-  fi
+  local port_file="$HOME/.opencode-port"
 
   if [[ ! -f "$port_file" ]]; then
     local port=$(( RANDOM % 50001 + 10000 ))
@@ -131,44 +123,32 @@ opencode-start() {
   local port
   port=$(cat "$port_file")
   echo "opencode: web UI at http://100.85.21.13:$port"
-  OPENCODE_SERVER_PASSWORD="$OPENCODE_SERVER_PASSWORD" opencode web --hostname 0.0.0.0 --port "$port" "$@"
+  OPENCODE_SERVER_PASSWORD="$OPENCODE_SERVER_PASSWORD" opencode web "$HOME" --hostname 0.0.0.0 --port "$port" "$@"
 }
 
-# Attach TUI to a running opencode web server for the current project
+# Attach TUI to the running opencode web server
 opencode-tui() {
-  local port_file
-  local git_root
-  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-  if [[ -n "$git_root" ]]; then
-    port_file="$git_root/.opencode-port"
-  else
-    port_file="$PWD/.opencode-port"
-  fi
+  local port_file="$HOME/.opencode-port"
 
   if [[ ! -f "$port_file" ]]; then
-    echo "No .opencode-port found. Run opencode-start first."
+    echo "No ~/.opencode-port found. Run opencode-start first."
     return 1
   fi
+
   local port
   port=$(cat "$port_file")
   OPENCODE_SERVER_PASSWORD="$OPENCODE_SERVER_PASSWORD" opencode attach "http://localhost:$port"
 }
 
-# Print the opencode web URL for the current project
+# Print the opencode web URL
 opencode-url() {
-  local port_file
-  local git_root
-  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-  if [[ -n "$git_root" ]]; then
-    port_file="$git_root/.opencode-port"
-  else
-    port_file="$PWD/.opencode-port"
-  fi
+  local port_file="$HOME/.opencode-port"
 
   if [[ ! -f "$port_file" ]]; then
-    echo "No .opencode-port found. Run opencode-start first."
+    echo "No ~/.opencode-port found. Run opencode-start first."
     return 1
   fi
+
   local port
   port=$(cat "$port_file")
   echo "http://100.85.21.13:$port"
