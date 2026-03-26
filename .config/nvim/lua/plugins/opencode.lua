@@ -21,6 +21,17 @@ return {
       },
     }
 
+    -- Override i_cr after init so the snacks win config can be modified via opts table directly.
+    -- vim.g doesn't support mixed keys needed for snacks win opts (neovim#12544), so we patch here.
+    vim.schedule(function()
+      local config = require("opencode.config")
+      config.opts.ask.snacks.win.keys.i_cr = {
+        "<CR>",
+        "confirm", -- skip cmp_accept so <CR> always submits immediately
+        mode = { "i", "n" },
+      }
+    end)
+
     vim.o.autoread = true -- Auto-reload files edited by opencode
 
     vim.keymap.set("n", "<leader>oa", function() require("opencode").ask() end, { desc = "Ask opencode" })
