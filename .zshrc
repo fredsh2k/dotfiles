@@ -130,8 +130,28 @@ opencode-start() {
 
   local port
   port=$(cat "$port_file")
-  echo "opencode: starting on http://100.85.21.13:$port"
-  opencode --hostname 0.0.0.0 --port "$port" "$@"
+  echo "opencode: web UI at http://100.85.21.13:$port"
+  opencode web --hostname 0.0.0.0 --port "$port" "$@"
+}
+
+# Attach TUI to a running opencode web server for the current project
+opencode-tui() {
+  local port_file
+  local git_root
+  git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -n "$git_root" ]]; then
+    port_file="$git_root/.opencode-port"
+  else
+    port_file="$PWD/.opencode-port"
+  fi
+
+  if [[ ! -f "$port_file" ]]; then
+    echo "No .opencode-port found. Run opencode-start first."
+    return 1
+  fi
+  local port
+  port=$(cat "$port_file")
+  opencode attach "http://localhost:$port"
 }
 
 # Print the opencode web URL for the current project
