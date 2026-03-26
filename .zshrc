@@ -123,7 +123,7 @@ opencode-start() {
   local port
   port=$(cat "$port_file")
   echo "opencode: web UI at http://100.85.21.13:$port"
-  OPENCODE_SERVER_PASSWORD="$OPENCODE_SERVER_PASSWORD" opencode web "$HOME" --hostname 0.0.0.0 --port "$port" "$@"
+  ( cd "$HOME" && OPENCODE_SERVER_PASSWORD="$OPENCODE_SERVER_PASSWORD" opencode web --hostname 0.0.0.0 --port "$port" "$@" )
 }
 
 # Attach TUI to the running opencode web server
