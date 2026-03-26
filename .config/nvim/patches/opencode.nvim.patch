@@ -1,0 +1,18 @@
+diff --git a/lua/opencode/context.lua b/lua/opencode/context.lua
+index d2a5c26..e231bb1 100644
+--- a/lua/opencode/context.lua
++++ b/lua/opencode/context.lua
+@@ -85,6 +85,13 @@ local function highlight(buf, range)
+     local line = vim.api.nvim_buf_get_lines(buf, end_row, end_row + 1, false)[1] or ""
+     end_col = math.min(range.to[2] + 1, #line)
+   end
++  -- Guard: skip highlight if range is out of bounds for this buffer.
++  -- This can happen when selection marks come from a different window/buffer
++  -- (e.g. a snacks picker list) than the last-used valid window's buffer.
++  local line_count = vim.api.nvim_buf_line_count(buf)
++  if range.from[1] - 1 >= line_count or end_row >= line_count then
++    return
++  end
+   vim.api.nvim_buf_set_extmark(buf, ns_id, range.from[1] - 1, range.from[2], {
+     end_row = end_row,
+     end_col = end_col,
