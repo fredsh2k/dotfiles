@@ -34,8 +34,17 @@ return {
 
     vim.o.autoread = true -- Auto-reload files edited by opencode
 
-    vim.keymap.set("n", "<leader>oa", function() require("opencode").ask() end, { desc = "Ask opencode" })
-    vim.keymap.set("x", "<leader>oa", function() require("opencode").ask("@this ") end, { desc = "Ask opencode about selection" })
+    -- Resolve @this eagerly so the actual file path + line range appears in the prompt
+    -- instead of the literal "@this" placeholder. Works for both normal (cursor position)
+    -- and visual (line range) modes, and for snacks git diff preview buffers.
+    local function ask_with_location()
+      local context = require("opencode.context").new()
+      local location = context:this() or ""
+      require("opencode").ask(location .. " ", { context = context })
+    end
+
+    vim.keymap.set("n", "<leader>oa", ask_with_location, { desc = "Ask opencode" })
+    vim.keymap.set("x", "<leader>oa", ask_with_location, { desc = "Ask opencode about selection" })
     vim.keymap.set({ "n", "x" }, "<leader>op", function() return require("opencode").operator("@this ") end, { desc = "Send to opencode", expr = true })
     vim.keymap.set("n", "<leader>opl", function() return require("opencode").operator("@this ") .. "_" end, { desc = "Send line to opencode", expr = true })
   end,
