@@ -1,5 +1,8 @@
 theme = GitHub Dark Dimmed
 
+# Unicode BiDi support for Hebrew RTL text
+grapheme-width-method = unicode
+
 # Allow manual window title setting via escape sequences
 shell-integration-features = no-title
 

@@ -47,6 +47,12 @@ brew install \
   fd \
   sd \
   bat \
+  eza \
+  dust \
+  bottom \
+  broot \
+  rm-improved \
+  zoxide \
   gh \
   nvm \
   rbenv \
@@ -56,10 +62,27 @@ brew install \
   zellij \
   stylua \
   lua-language-server \
+  imagemagick \
+  presenterm \
+  weasyprint \
   zsh-vi-mode \
   zsh-autosuggestions \
   zsh-syntax-highlighting
 ok "CLI tools installed"
+
+# ---------------------------------------------------------------------------
+# npm global tools (requires nvm/node)
+# ---------------------------------------------------------------------------
+info "Installing npm global tools..."
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
+if command -v nvm &>/dev/null; then
+  nvm install --lts 2>/dev/null || true
+  npm install -g @mermaid-js/mermaid-cli 2>/dev/null || warn "mmdc install failed — install manually after nvm setup"
+else
+  warn "nvm not loaded — skipping npm global tools (run manually after shell reload)"
+fi
+ok "npm global tools done"
 
 # ---------------------------------------------------------------------------
 # GUI apps (casks)

@@ -37,8 +37,7 @@ return {
     -- Resolve the file location eagerly so the actual path + line range appears in the
     -- prompt instead of the "@this" placeholder. Handles two cases:
     --   1. Inside a snacks picker (e.g. git diff, references): read from the current item.
-    --   2. Regular buffer: use Context:this() (cursor or visual selection).
-    -- Always auto-submits after the user confirms the prompt.
+    --   2. Regular buffer: use the current window's buffer + cursor/selection directly.
     local function ask_with_location()
       local location = ""
 
@@ -56,15 +55,21 @@ return {
         end
       end
 
-      -- Fall back to context:this() for regular buffers (also handles visual selection)
+      -- Use the current window's buffer directly (avoids last_used_valid_win picking wrong buf)
       if location == "" then
-        local context = require("opencode.context").new()
-        location = context:this() or ""
-        require("opencode").ask(location .. " ", { context = context, submit = true })
-        return
+        local buf = vim.api.nvim_win_get_buf(vim.api.nvim_get_current_win())
+        local buftype = vim.api.nvim_get_option_value("buftype", { buf = buf })
+        local filepath = vim.api.nvim_buf_get_name(buf)
+        local is_file = buftype == "" and filepath ~= "" and vim.fn.isdirectory(filepath) == 0
+        if is_file then
+          local context = require("opencode.context").new()
+          location = context:this() or ""
+          require("opencode").ask(location .. " ", { context = context })
+          return
+        end
       end
 
-      require("opencode").ask(location .. " ", { submit = true })
+      require("opencode").ask(location .. " ")
     end
 
     vim.keymap.set("n", "<leader>oa", ask_with_location, { desc = "Ask opencode" })
