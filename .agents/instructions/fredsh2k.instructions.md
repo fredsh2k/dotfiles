@@ -24,3 +24,7 @@ Do not reply to people comments on PRs.
 
 Before cloning any repo, always check if it already exists under /Users/fsherman/Code/GitHub/ first.
 
+Dotfiles are managed via a bare git repo at `~/.dotfiles.git` with work-tree `$HOME`.
+Use `git --git-dir=$HOME/.dotfiles.git --work-tree=$HOME` for all dotfile git operations.
+Remote: https://github.com/fredsh2k/dotfiles.git
+
