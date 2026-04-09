@@ -73,6 +73,19 @@ alias k=kubectl
 # dotfiles bare repo management
 alias dot='git --git-dir=$HOME/.dotfiles.git --work-tree=$HOME'
 
+# zellij - launch/attach with session named after current directory
+zj() {
+  local session_name="$(basename "$(pwd)")"
+  zellij attach --create "$session_name" "$@"
+}
+
+# zellij with layout - launch with session name + layout
+zjl() {
+  local session_name="$(basename "$(pwd)")"
+  local layout="${1:-single}"
+  zellij --session "$session_name" --layout "$layout"
+}
+
 # node - lazy load for speed
 export NVM_DIR="$HOME/.nvm"
 # Lazy load nvm for faster startup
