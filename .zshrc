@@ -20,6 +20,13 @@ ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
 
 source $ZSH/oh-my-zsh.sh
 
+# Keep Ghostty window title in sync with cwd
+_set_window_title() {
+  print -Pn "\e]0;%1~\a"
+}
+add-zsh-hook chpwd _set_window_title
+_set_window_title  # also run once on shell startup
+
 # vi mode & fzf
 # zvm_after_init is called by zsh-vi-mode after its own init (via precmd on first prompt)
 # This re-applies fzf key bindings which zvm would otherwise override
@@ -72,19 +79,6 @@ alias k=kubectl
 
 # dotfiles bare repo management
 alias dot='git --git-dir=$HOME/.dotfiles.git --work-tree=$HOME'
-
-# zellij - launch/attach with session named after current directory
-zj() {
-  local session_name="$(basename "$(pwd)")"
-  zellij attach --create "$session_name" "$@"
-}
-
-# zellij with layout - launch with session name + layout
-zjl() {
-  local session_name="$(basename "$(pwd)")"
-  local layout="${1:-single}"
-  zellij --session "$session_name" --layout "$layout"
-}
 
 # node - lazy load for speed
 export NVM_DIR="$HOME/.nvm"
