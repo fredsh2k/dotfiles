@@ -6,7 +6,7 @@
 set -e
 
 DOTFILES_REPO="https://github.com/fredsh2k/dotfiles.git"
-DOTFILES_GIT="$HOME/.dotfiles.git"
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/Code/Personal/dotfiles}"
 
 info() { printf '\033[0;34m[info]\033[0m  %s\n' "$*"; }
 ok()   { printf '\033[0;32m[ok]\033[0m    %s\n' "$*"; }
@@ -127,28 +127,37 @@ fi
 ok "opencode ready"
 
 # ---------------------------------------------------------------------------
-# Dotfiles (bare git repo)
+# Dotfiles — clone real repo + symlink each tracked file into $HOME
 # ---------------------------------------------------------------------------
-if [[ -d "$DOTFILES_GIT" ]]; then
-  warn "~/.dotfiles.git already exists — skipping clone"
+if [[ -d "$DOTFILES_DIR/.git" ]]; then
+  warn "$DOTFILES_DIR already exists — skipping clone"
 else
-  info "Cloning dotfiles..."
-  git clone --bare "$DOTFILES_REPO" "$DOTFILES_GIT"
+  info "Cloning dotfiles to $DOTFILES_DIR..."
+  mkdir -p "$(dirname "$DOTFILES_DIR")"
+  git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
 fi
 
-dot() { git --git-dir="$DOTFILES_GIT" --work-tree="$HOME" "$@"; }
-dot config status.showUntrackedFiles no
-
-info "Checking out dotfiles..."
-if ! dot checkout 2>/dev/null; then
-  warn "Backing up conflicting files to ~/.dotfiles-backup/"
-  mkdir -p "$HOME/.dotfiles-backup"
-  dot checkout 2>&1 \
-    | awk '/^\s/ {print $1}' \
-    | xargs -I{} sh -c 'mkdir -p "$(dirname "$HOME/.dotfiles-backup/{}")" && mv "$HOME/{}" "$HOME/.dotfiles-backup/{}"'
-  dot checkout
-fi
-ok "Dotfiles checked out"
+info "Symlinking tracked files into \$HOME..."
+backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
+backup_made=0
+cd "$DOTFILES_DIR"
+for f in $(git ls-files); do
+  live="$HOME/$f"
+  target="$DOTFILES_DIR/$f"
+  if [[ -L "$live" && "$(readlink "$live")" == "$target" ]]; then
+    continue
+  fi
+  mkdir -p "$(dirname "$live")"
+  if [[ -e "$live" || -L "$live" ]]; then
+    mkdir -p "$(dirname "$backup_dir/$f")"
+    mv "$live" "$backup_dir/$f"
+    backup_made=1
+  fi
+  ln -s "$target" "$live"
+done
+cd - >/dev/null
+[[ $backup_made -eq 1 ]] && warn "Pre-existing files backed up to $backup_dir"
+ok "Dotfiles symlinked"
 
 # ---------------------------------------------------------------------------
 # Copilot skill symlinks
