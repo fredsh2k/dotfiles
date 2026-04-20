@@ -41,3 +41,9 @@ Remote: https://github.com/fredsh2k/dotfiles.git (do NOT push without approval �
 - **Shell**: zsh + oh-my-zsh + spaceship prompt + zsh-vi-mode. Config at `~/.zshrc`.
 - **Cheatsheets**: `/Users/fsherman/Code/Personal/cheatsheets/` (local git, no remote)
 
+## Working pattern (multi-repo)
+
+I run **one Hermes TUI per repo I'm actively working on**, plus a persistent Hermes TUI in `~/Code/Personal/dotfiles` for general/system tasks. Each Hermes instance is launched with that repo as its `cwd` so it auto-loads the repo's `AGENTS.md`, keeps `session_search` history scoped, and owns its own background processes (dev servers, watchers).
+
+Each Ghostty window is split: **Hermes TUI on the left, LazyVim on the right**, both rooted in the same repo. LazyVim is for manual edits and reviewing diffs (`space g D` → Diffview) of changes Hermes (or I) made. Don't assume a single Hermes instance is coordinating across repos — for cross-repo work, prefer telling me to run something in the appropriate repo's Hermes pane rather than `cd`-ing around. Use `delegate_task` only for parallel sub-work *within* the current repo, not for orchestrating other repos.
+
