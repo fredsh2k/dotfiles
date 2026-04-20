@@ -159,13 +159,3 @@ opencode-url() {
   echo "http://100.85.21.13:$port"
 }
 
-
-# Google Workspace / Tasks CLI — uses Hermes' venv (has googleapiclient installed)
-# Usage: gapi tasks lists
-#        gapi tasks list --list-id <ID>
-#        gapi tasks create --title "Buy milk"
-#        gapi gmail search --query "from:foo"
-gapi() {
-  ~/.hermes/hermes-agent/venv/bin/python \
-    ~/.hermes/skills/productivity/google-workspace/scripts/google_api.py "$@"
-}

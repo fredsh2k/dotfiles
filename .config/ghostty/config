@@ -9,7 +9,7 @@ macos-option-as-alt = true
 # Auto-copy selected text to clipboard
 copy-on-select = clipboard
 
-# Shift+drag ALWAYS bypasses app mouse capture (e.g. Hermes TUI mode 1006).
+# Shift+drag ALWAYS bypasses app mouse capture (e.g. TUI mode 1006).
 # 'never' prevents apps from overriding via XTSHIFTESCAPE.
 mouse-shift-capture = never
 
