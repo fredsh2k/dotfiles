@@ -31,21 +31,17 @@ Dotfiles live as a regular git clone at `~/Code/Personal/dotfiles`, with tracked
 Use `git -C ~/Code/Personal/dotfiles ...` (or the `dot` alias) for all dotfile git operations. Edit files via the repo path so changes flow through the symlinks.
 Remote: https://github.com/fredsh2k/dotfiles.git (do NOT push without approval — see git-push rule above).
 
-`~/.hermes/skills/` is a symlink to `~/Code/Personal/dotfiles/.hermes/skills/` — every skill is tracked. Any `skill_manage(action='patch')` writes appear in `git diff` for review. Use `git log --oneline .hermes/skills/<path>` to see history; delete unused skills with `rip ~/.hermes/skills/<cat>/<name>/` then `git -C ~/Code/Personal/dotfiles add -A .hermes/skills`.
-
 ## Dev environment
 
 - **Terminal**: Ghostty (supports Kitty graphics protocol for inline images; `copy-on-select = clipboard` configured)
 - **Editor**: LazyVim (Neovim). Stay close to defaults, minimal custom plugins. Config at `~/.config/nvim/`.
-- **AI**: OpenCode runs in a separate terminal pane, not embedded in Neovim.
+- **AI**: OpenCode TUI runs in a separate terminal pane, not embedded in Neovim. Config at `~/.config/opencode/`.
 - **Shell**: zsh + oh-my-zsh + spaceship prompt + zsh-vi-mode. Config at `~/.zshrc`.
 - **Cheatsheets**: `/Users/fsherman/Code/Personal/cheatsheets/` (local git, no remote)
 
 ## Working pattern (multi-repo)
 
-I run **one Hermes TUI per repo I'm actively working on**, plus a persistent Hermes TUI in `~/Code/Personal/dotfiles` for general/system tasks. Each Hermes instance is launched with that repo as its `cwd` so it auto-loads the repo's `AGENTS.md`, keeps `session_search` history scoped, and owns its own background processes (dev servers, watchers).
+Each Ghostty window is split: **OpenCode TUI on the left pane, LazyVim on the right pane**, both rooted in the same repo. LazyVim is for manual edits and reviewing diffs (`space g D` → Diffview) of changes OpenCode (or I) made.
 
-Each Ghostty window is split: **Hermes TUI on the left, LazyVim on the right**, both rooted in the same repo. LazyVim is for manual edits and reviewing diffs (`space g D` → Diffview) of changes Hermes (or I) made. Don't assume a single Hermes instance is coordinating across repos — for cross-repo work, prefer telling me to run something in the appropriate repo's Hermes pane rather than `cd`-ing around. Use `delegate_task` only for parallel sub-work *within* the current repo, not for orchestrating other repos.
-
-When I want to resume a Hermes session on a different platform (TUI → Discord/Telegram), the most reliable flow is `/title <name>` followed by sending any short message in the TUI (e.g. `ok`). The message turn creates the SQLite session row and flushes the pending title in the same hook. `hermes sessions rename <id> "..."` from a shell only works if the row already exists — fresh TUI sessions haven't been persisted yet and will fail with "not found". On the target platform, type `/resume <name>` explicitly (the bare `/resume` listing is source-filtered and won't show TUI-origin sessions). See skill `hermes-session-titles-cross-platform` for full details.
+I run **one OpenCode TUI per repo I'm actively working on**, launched with that repo as its `cwd` so it auto-loads the repo's `AGENTS.md` and keeps session history scoped. For cross-repo work, prefer telling me to run something in the appropriate repo's OpenCode pane rather than `cd`-ing around.
 
