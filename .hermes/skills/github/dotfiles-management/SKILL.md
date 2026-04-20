@@ -79,6 +79,65 @@ $DOT commit -m "track custom skill <name>"
 
 `-f` is required and safe — it only adds the explicit path, doesn't override the ignore for siblings. Verify with `$DOT status --ignored -s -- ~/.hermes/`.
 
+## Tracking an entire agent-managed directory (auditing self-modifications)
+
+When an agent (Hermes, OpenCode, Claude Code) writes into its own state dir — e.g. `skill_manage(action='patch')` editing `~/.hermes/skills/<x>/SKILL.md` — those writes are normally invisible: no git, no diff, no audit trail. Pattern to make every write visible:
+
+1. Move the entire dir into the dotfiles repo
+2. Replace the original path with a **directory symlink** pointing into the repo
+3. Now every agent write lands inside the repo and shows up in `dot status` / `dot diff`
+
+```zsh
+SRC="$HOME/.hermes/skills"
+DST="$HOME/Code/Personal/dotfiles/.hermes/skills"
+
+# Pre-flight: clean garbage that shouldn't be tracked
+fd -H -t d __pycache__ "$SRC" -x rm -rf {}
+fd -H -t f -e pyc . "$SRC" -x rm {}
+
+# Resolve any existing symlinks inside SRC that point INTO DST (otherwise rsync copies the symlink itself)
+# These exist if you previously file-level-tracked individual files from this tree.
+for link in $(fd -t l . "$SRC"); do
+  target=$(readlink "$link")
+  if [[ "$target" == "$DST"/* ]]; then
+    rm "$link" && cp "$target" "$link"
+  fi
+done
+
+# Merge SRC into DST, preserving any files DST already had
+rsync -a --ignore-existing "$SRC/" "$DST/"
+
+# Verify zero diffs
+diff -rq "$SRC" "$DST"   # must be empty
+
+# Swap: backup original, replace with symlink
+mv "$SRC" "$SRC.pre-symlink-bak"
+ln -s "$DST" "$SRC"
+
+# Add a .gitignore inside the now-tracked dir for transient state
+cat > "$DST/.gitignore" <<'EOF'
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+EOF
+
+cd ~/Code/Personal/dotfiles
+git add .hermes/skills && git commit -m "feat: track all <agent> skills"
+```
+
+**Why directory symlink (not file-level)**: file-level tracking misses any *new* file the agent creates, since the new file lives outside the repo. A directory symlink captures all future writes automatically.
+
+**Cost**: bundled/upstream files get tracked too. For Hermes skills this was ~9.8 MB / 434 mostly-text files — acceptable. If the dir is huge or contains binaries/caches, prefer the selective force-add pattern instead.
+
+**Workflow unlocked**:
+- After any session: `dot status` shows what the agent self-modified
+- History per-skill: `dot log --oneline -- .hermes/skills/<cat>/<name>/`
+- Find unused skills: `dot log --since="3 months ago" --name-only -- .hermes/skills/ | sort -u` — anything missing hasn't been touched
+- Bootstrap scripts using file-level `git ls-files | xargs ln -s` still work on fresh machines (they create individual file symlinks instead of a dir symlink — equivalent end state for read/write).
+
+Tested in Hermes (Apr 2026).
+
 ## Plain symlink migration recipe (when truly warranted)
 
 ```zsh
