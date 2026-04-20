@@ -159,3 +159,41 @@ opencode-url() {
   echo "http://100.85.21.13:$port"
 }
 
+# Send a Discord notification via webhook.
+# Usage: notify "message"
+#        notify "title" "message"
+#        echo "piped" | notify
+# Webhook URL lives at ~/.config/secrets/discord-webhook (gitignored, chmod 600).
+notify() {
+  local webhook_file="$HOME/.config/secrets/discord-webhook"
+  if [[ ! -r "$webhook_file" ]]; then
+    echo "notify: missing $webhook_file" >&2
+    return 1
+  fi
+
+  local webhook
+  webhook=$(<"$webhook_file")
+
+  local content
+  if [[ $# -eq 0 ]]; then
+    content=$(cat)
+  elif [[ $# -eq 1 ]]; then
+    content="$1"
+  else
+    content="**$1**
+$2"
+  fi
+
+  if [[ -z "$content" ]]; then
+    echo "notify: empty message" >&2
+    return 1
+  fi
+
+  # Discord caps message content at 2000 chars.
+  content="${content:0:1900}"
+
+  curl -fsS -H "Content-Type: application/json" \
+    -d "$(jq -nc --arg c "$content" '{content:$c}')" \
+    "$webhook" >/dev/null
+}
+

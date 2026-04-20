@@ -1,0 +1,35 @@
+name: Morning briefing
+
+on:
+  schedule:
+    # 09:00 Asia/Jerusalem Sun-Thu = 06:00 UTC (IDT) or 07:00 UTC (IST).
+    # Cron weekday: Sun=0 (or 7), Mon=1, ..., Thu=4. Sun-Thu = 0-4.
+    # Schedule both UTC times; TARGET_HOUR guard ensures only one fires.
+    - cron: '0 6,7 * * 0-4'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Skip TARGET_HOUR guard and post immediately'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morning-briefing
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run morning briefing
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          TARGET_HOUR: ${{ inputs.force && '' || '9' }}
+          BRIEFING_USER: fredsh2k
+        run: ./bin/briefing-morning

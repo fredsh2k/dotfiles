@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+# Morning briefing: GitHub work needing attention.
+# Posts to Discord webhook.
+# Requires: gh (authenticated), jq, curl.
+#
+# Secrets resolution (env first, then file fallback):
+#   DISCORD_WEBHOOK | ~/.config/secrets/discord-webhook
+#
+# In CI: GH_TOKEN env must be set (gh CLI uses it).
+# Locally: gh auth status provides the token.
+#
+# DST guard: if TARGET_HOUR env var is set, exits 0 unless the current local
+# hour matches. Used in CI to schedule at multiple UTC times across DST.
+
+set -uo pipefail
+
+ME="${BRIEFING_USER:-fredsh2k}"
+WEBHOOK_FILE="$HOME/.config/secrets/discord-webhook"
+DISCORD_LIMIT=1900
+LOCAL_TZ="${LOCAL_TZ:-Asia/Jerusalem}"
+
+# DST guard
+if [[ -n "${TARGET_HOUR:-}" ]]; then
+  current_hour=$(TZ="$LOCAL_TZ" date +%H)
+  current_hour=$((10#$current_hour))  # strip leading zero
+  if [[ "$current_hour" -ne "$TARGET_HOUR" ]]; then
+    echo "local hour $current_hour != TARGET_HOUR $TARGET_HOUR, skipping"
+    exit 0
+  fi
+fi
+
+# Resolve webhook
+if [[ -n "${DISCORD_WEBHOOK:-}" ]]; then
+  WEBHOOK="$DISCORD_WEBHOOK"
+elif [[ -r "$WEBHOOK_FILE" ]]; then
+  WEBHOOK="$(<"$WEBHOOK_FILE")"
+else
+  echo "missing secret: env DISCORD_WEBHOOK unset and $WEBHOOK_FILE not found" >&2
+  exit 1
+fi
+
+post_discord() {
+  local content="$1"
+  content="${content:0:$DISCORD_LIMIT}"
+  curl -fsS -H 'Content-Type: application/json' \
+    -H "User-Agent: briefing-morning/1.0" \
+    -d "$(jq -nc --arg c "$content" '{content:$c}')" \
+    "$WEBHOOK" >/dev/null
+}
+
+render_items() {
+  # Group by repo, render: "**owner/repo**\n  • title — <url>"
+  jq -s -r '
+    def repo_of:
+      if .repository then (.repository.nameWithOwner // .repository.full_name // "?")
+      elif .repository_url then (.repository_url | sub("https://api.github.com/repos/"; ""))
+      else "?" end;
+
+    def link_of:
+      .url // .html_url // .subject.url // "";
+
+    def title_of:
+      .title // .subject.title // "(no title)";
+
+    flatten
+    | group_by(repo_of)
+    | sort_by(.[0] | repo_of)
+    | map(
+        "**\(.[0] | repo_of)**\n" +
+        (map("  • \(. | title_of) — <\(. | link_of)>") | join("\n"))
+      )
+    | join("\n")
+  '
+}
+
+# Filter out bot-authored PRs (dependabot, renovate, github-actions, etc.)
+# Pass NDJSON through stdin, get filtered NDJSON.
+filter_bots() {
+  jq 'select(
+    (.author.login // "") as $a
+    | ($a | endswith("[bot]") | not)
+    and ($a != "dependabot")
+    and ($a != "dependabot-preview")
+    and ($a != "renovate")
+  )'
+}
+
+section() {
+  local title="$1" body="$2" count="$3"
+  if [[ -z "$body" ]]; then
+    echo "**$title** — _none_"
+  else
+    echo "**$title ($count)**"
+    echo "$body"
+  fi
+}
+
+# 1. PRs awaiting my review (excluding bot PRs)
+prs_review_raw=$(gh search prs --review-requested=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,author 2>/dev/null || echo '[]')
+prs_review_json=$(jq -c '.[]' <<<"$prs_review_raw" | filter_bots | jq -s '.')
+prs_review_count=$(jq 'length' <<<"$prs_review_json")
+prs_review=$(jq -c '.[]' <<<"$prs_review_json" | render_items)
+
+# 2. My open PRs needing attention
+my_prs_json=$(gh search prs --author=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,reviewDecision,statusCheckRollup,isDraft,author 2>/dev/null || echo '[]')
+my_prs_attn_json=$(jq '[.[] | select(.isDraft == false) | select(.reviewDecision == "CHANGES_REQUESTED" or ([.statusCheckRollup // [] | .[]?.conclusion] | any(. == "FAILURE")))]' <<<"$my_prs_json")
+my_prs_attn_count=$(jq 'length' <<<"$my_prs_attn_json")
+my_prs_attn=$(jq -c '.[]' <<<"$my_prs_attn_json" | render_items)
+
+# 3. Issues assigned to me
+issues_assigned_json=$(gh search issues --assignee=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt 2>/dev/null || echo '[]')
+issues_assigned_count=$(jq 'length' <<<"$issues_assigned_json")
+issues_assigned=$(jq -c '.[]' <<<"$issues_assigned_json" | render_items)
+
+# 4. Issues I'm @-mentioned in (last 7 days)
+since=$(date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -v-7d +%Y-%m-%d)
+issues_mention_json=$(gh search issues --mentions=@me --state=open --archived=false --updated=">=$since" --limit 50 --json url,title,repository,updatedAt 2>/dev/null || echo '[]')
+issues_mention_json=$(jq --argjson assigned "$issues_assigned_json" '
+  ($assigned | map(.url)) as $aurls
+  | map(select(.url as $u | $aurls | index($u) | not))
+' <<<"$issues_mention_json")
+issues_mention_count=$(jq 'length' <<<"$issues_mention_json")
+issues_mention=$(jq -c '.[]' <<<"$issues_mention_json" | render_items)
+
+# 5. PRs I'm @-mentioned in (excluding bots, my own, and already-listed-for-review)
+prs_mention_raw=$(gh search prs --mentions=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,author 2>/dev/null || echo '[]')
+prs_mention_json=$(jq --arg me "$ME" --argjson review "$prs_review_json" --argjson mine "$my_prs_json" '
+  (($review + $mine) | map(.url)) as $known
+  | map(select(.author.login != $me and (.url as $u | $known | index($u) | not)))
+' <<<"$prs_mention_raw")
+prs_mention_json=$(jq -c '.[]' <<<"$prs_mention_json" | filter_bots | jq -s '.')
+prs_mention_count=$(jq 'length' <<<"$prs_mention_json")
+prs_mention=$(jq -c '.[]' <<<"$prs_mention_json" | render_items)
+
+# 6. Discussions I'm mentioned in (GraphQL — gh search doesn't support discussions)
+# Requires PAT with Discussions: Read permission.
+discussions_json=$(gh api graphql -f query='
+  query {
+    search(query: "mentions:'"$ME"' is:open archived:false updated:>='"$since"'", type: DISCUSSION, first: 50) {
+      nodes {
+        ... on Discussion {
+          url
+          title
+          repository { nameWithOwner }
+        }
+      }
+    }
+  }
+' --jq '[.data.search.nodes[] | {url, title, repository: {nameWithOwner: .repository.nameWithOwner}}]' 2>/dev/null || echo '[]')
+discussions_count=$(jq 'length' <<<"$discussions_json")
+discussions=$(jq -c '.[]' <<<"$discussions_json" | render_items)
+
+# 7. My draft PRs
+my_drafts_json=$(jq '[.[] | select(.isDraft == true)]' <<<"$my_prs_json")
+my_drafts_count=$(jq 'length' <<<"$my_drafts_json")
+my_drafts=$(jq -c '.[]' <<<"$my_drafts_json" | render_items)
+
+today=$(TZ="$LOCAL_TZ" date '+%a %b %d')
+
+content=$({
+  echo "## ☀️ Morning briefing — $today"
+  echo
+  section "🔍 PRs awaiting my review" "$prs_review" "$prs_review_count"
+  echo
+  section "⚠️  My PRs needing attention" "$my_prs_attn" "$my_prs_attn_count"
+  echo
+  section "📌 Issues assigned to me" "$issues_assigned" "$issues_assigned_count"
+  echo
+  section "💬 Issues I'm mentioned in (7d)" "$issues_mention" "$issues_mention_count"
+  echo
+  section "💬 PRs I'm mentioned in" "$prs_mention" "$prs_mention_count"
+  echo
+  section "🗨️  Discussions I'm mentioned in (7d)" "$discussions" "$discussions_count"
+  echo
+  section "📝 My draft PRs" "$my_drafts" "$my_drafts_count"
+})
+
+if [[ ${#content} -le $DISCORD_LIMIT ]]; then
+  post_discord "$content"
+  exit 0
+fi
+
+# Chunk by line to stay under 2000-char limit
+buf=""
+while IFS= read -r line; do
+  candidate="$buf$line"$'\n'
+  if [[ ${#candidate} -gt $DISCORD_LIMIT ]]; then
+    post_discord "$buf"
+    buf="$line"$'\n'
+  else
+    buf="$candidate"
+  fi
+done <<<"$content"
+[[ -n "$buf" ]] && post_discord "$buf"

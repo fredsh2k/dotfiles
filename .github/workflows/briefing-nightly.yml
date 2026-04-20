@@ -1,0 +1,42 @@
+name: Nightly briefing
+
+on:
+  schedule:
+    # 22:00 Asia/Jerusalem = 19:00 UTC (IDT, summer) or 20:00 UTC (IST, winter).
+    # We schedule both; the script's TARGET_HOUR guard ensures only one fires.
+    - cron: '0 19,20 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Skip TARGET_HOUR guard and post immediately'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-briefing
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install Python deps
+        run: pip install --quiet google-api-python-client google-auth google-auth-oauthlib
+
+      - name: Run nightly briefing
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GOOGLE_OAUTH_CLIENT: ${{ secrets.GOOGLE_OAUTH_CLIENT }}
+          GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
+          TARGET_HOUR: ${{ inputs.force && '' || '22' }}
+        run: ./bin/notify-daily

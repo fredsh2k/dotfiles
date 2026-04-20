@@ -1,2 +1,5 @@
 # Private agent skills (work-related, may contain sensitive info)
 .agents/skills-private/
+
+# Local secrets (webhooks, tokens, etc.) — never tracked
+.config/secrets/
