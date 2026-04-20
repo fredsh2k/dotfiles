@@ -71,8 +71,8 @@ export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}"
 alias g=git
 alias k=kubectl
 
-# dotfiles bare repo management
-alias dot='git --git-dir=$HOME/.dotfiles.git --work-tree=$HOME'
+# dotfiles — symlinked from ~/Code/Personal/dotfiles
+alias dot='git -C $HOME/Code/Personal/dotfiles'
 
 # node - lazy load for speed
 export NVM_DIR="$HOME/.nvm"
