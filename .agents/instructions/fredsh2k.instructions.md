@@ -11,6 +11,7 @@ ALWAYS use `fd` instead of find or built-in glob tools
 ALWAYS use `sd` instead of sed for find-and-replace
 ALWAYS use `rip` instead of rm (safer, uses graveyard)
 
+NEVER `git push` without my explicit approval. Stage and commit freely, but always pause and ask before pushing to any remote — including dotfiles, personal repos, and work repos. This applies to `git push`, `gh pr merge`, force-pushes, and anything else that mutates a remote.
 When using git commit use simple one-liner messages prefixed with fix: or feat: or docs: etc.
 When using git add use specific file paths, never use -A or --all or . (dot).
 After creating new files, always `git add` them so they can be reviewed in LazyVim with `space g D` (Diffview). Untracked files don't appear in diffview.
@@ -26,14 +27,13 @@ Do not reply to people comments on PRs.
 Before cloning any repo, always check if it already exists under /Users/fsherman/Code/GitHub/ first.
 When researching internal GitHub infrastructure, platforms, or services, read the thehub repo at `/Users/fsherman/Code/GitHub/thehub` for documentation.
 
-Dotfiles are managed via a bare git repo at `~/.dotfiles.git` with work-tree `$HOME`.
-Use `git --git-dir=$HOME/.dotfiles.git --work-tree=$HOME` for all dotfile git operations.
-Remote: https://github.com/fredsh2k/dotfiles.git
+Dotfiles live as a regular git clone at `~/Code/Personal/dotfiles`, with tracked files symlinked into `$HOME`.
+Use `git -C ~/Code/Personal/dotfiles ...` (or the `dot` alias) for all dotfile git operations. Edit files via the repo path so changes flow through the symlinks.
+Remote: https://github.com/fredsh2k/dotfiles.git (do NOT push without approval — see git-push rule above).
 
 ## Dev environment
 
-- **Terminal**: Ghostty (supports Kitty graphics protocol for inline images)
-- **Multiplexer**: Zellij (default mode: locked, `Ctrl+g` to unlock). Sessions named after project directories via `zj`/`zjl` shell functions.
+- **Terminal**: Ghostty (supports Kitty graphics protocol for inline images; `copy-on-select = clipboard` configured)
 - **Editor**: LazyVim (Neovim). Stay close to defaults, minimal custom plugins. Config at `~/.config/nvim/`.
 - **AI**: OpenCode runs in a separate terminal pane, not embedded in Neovim.
 - **Shell**: zsh + oh-my-zsh + spaceship prompt + zsh-vi-mode. Config at `~/.zshrc`.
