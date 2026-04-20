@@ -10,4 +10,9 @@ return {
       },
     },
   },
+  -- Don't render markdown by default; toggle on demand with :RenderMarkdown toggle
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    opts = { enabled = false },
+  },
 }
