@@ -3,6 +3,10 @@ return {
   opts = {
     picker = {
       sources = {
+        explorer = {
+          hidden = true,
+          ignored = true,
+        },
         git_diff = {
           win = {
             input = {
