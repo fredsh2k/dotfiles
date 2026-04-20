@@ -31,6 +31,8 @@ Dotfiles live as a regular git clone at `~/Code/Personal/dotfiles`, with tracked
 Use `git -C ~/Code/Personal/dotfiles ...` (or the `dot` alias) for all dotfile git operations. Edit files via the repo path so changes flow through the symlinks.
 Remote: https://github.com/fredsh2k/dotfiles.git (do NOT push without approval — see git-push rule above).
 
+`~/.hermes/skills/` is a symlink to `~/Code/Personal/dotfiles/.hermes/skills/` — every skill is tracked. Any `skill_manage(action='patch')` writes appear in `git diff` for review. Use `git log --oneline .hermes/skills/<path>` to see history; delete unused skills with `rip ~/.hermes/skills/<cat>/<name>/` then `git -C ~/Code/Personal/dotfiles add -A .hermes/skills`.
+
 ## Dev environment
 
 - **Terminal**: Ghostty (supports Kitty graphics protocol for inline images; `copy-on-select = clipboard` configured)
