@@ -1,4 +1,5 @@
 export ZSH="$HOME/.oh-my-zsh"
+export EDITOR="nvim"
 ZSH_THEME="spaceship"
 
 DISABLE_MAGIC_FUNCTIONS="true"
@@ -19,13 +20,6 @@ ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
 
 source $ZSH/oh-my-zsh.sh
-
-# Keep Ghostty window title in sync with cwd
-_set_window_title() {
-  print -Pn "\e]0;%1~\a"
-}
-add-zsh-hook chpwd _set_window_title
-_set_window_title  # also run once on shell startup
 
 # vi mode & fzf
 # zvm_after_init is called by zsh-vi-mode after its own init (via precmd on first prompt)
@@ -165,3 +159,13 @@ opencode-url() {
   echo "http://100.85.21.13:$port"
 }
 
+
+# Google Workspace / Tasks CLI — uses Hermes' venv (has googleapiclient installed)
+# Usage: gapi tasks lists
+#        gapi tasks list --list-id <ID>
+#        gapi tasks create --title "Buy milk"
+#        gapi gmail search --query "from:foo"
+gapi() {
+  ~/.hermes/hermes-agent/venv/bin/python \
+    ~/.hermes/skills/productivity/google-workspace/scripts/google_api.py "$@"
+}

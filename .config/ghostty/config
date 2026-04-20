@@ -3,8 +3,24 @@ theme = GitHub Dark Dimmed
 # Unicode BiDi support for Hebrew RTL text
 grapheme-width-method = unicode
 
-# Allow manual window title setting via escape sequences
-shell-integration-features = no-title
-
-# Send Option as Alt so Zellij keybindings (Alt+h/l/j/k) work
+# Send Option as Alt for keybindings (Alt+h/l/j/k etc.)
 macos-option-as-alt = true
+
+# Auto-copy selected text to clipboard
+copy-on-select = clipboard
+
+# Shift+drag ALWAYS bypasses app mouse capture (e.g. Hermes TUI mode 1006).
+# 'never' prevents apps from overriding via XTSHIFTESCAPE.
+mouse-shift-capture = never
+
+# Cmd+E: paste scrollback temp file path (includes screen + history)
+keybind = cmd+e=write_scrollback_file:paste
+
+# Navigate splits with Option+hjkl
+keybind = alt+h=goto_split:left
+keybind = alt+j=goto_split:bottom
+keybind = alt+k=goto_split:top
+keybind = alt+l=goto_split:right
+
+# Reduce dimming on unfocused splits (default 0.7, max 1.0)
+unfocused-split-opacity = 0.9
