@@ -28,12 +28,13 @@ Two-token pattern: keep readonly and write tokens in separate cache files so a w
 
 1. https://console.cloud.google.com → **New Project** (or pick existing)
 2. **APIs & Services → Library** → enable each API the script needs (e.g. `Google Calendar API`, `Google Tasks API`, `Gmail API`)
-3. **APIs & Services → OAuth consent screen**:
+3. **APIs & Services → OAuth consent screen** (or "Google Auth Platform" in newer UI):
    - User Type: **External**
-   - **App name**: pick something recognizable — this is what users see in the consent dialog (NOT the GCP project name)
+   - **App name**: pick something recognizable — this is what users see in the consent dialog (NOT the GCP project name; these are separate fields)
    - User support email + developer contact: your email
    - **Scopes**: add EVERY scope you'll request, both readonly and write. If a scope isn't listed here, requesting it returns `400 malformed request`.
-   - **Test users**: add your own Gmail address. While the app is in "Testing" status (not Published), only listed test users can authorize.
+   - **Test users**: add your own Gmail address while in Testing status.
+   - **Publish the app** (Audience tab → "Publish App"). For personal scripts this is strongly recommended — see "Publishing status" section below.
 4. **APIs & Services → Credentials** → **Create Credentials → OAuth client ID** → **Desktop app** → download JSON → save as `~/.config/secrets/google-oauth-client.json`, `chmod 600`.
 
 ## Python venv bootstrap
@@ -108,10 +109,10 @@ Always prefer the narrowest scope. Mixing readonly + write in one token is fine 
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `400. That's an error. The server cannot process the request because it is malformed.` | Requested scope is not listed on the OAuth consent screen | Add the missing scope under OAuth consent screen → Scopes → Save |
-| Browser shows wrong app name (e.g. "hermes" when project is "opencode") | OAuth consent screen "App name" field is stale | Edit App in consent screen, change name, Save (project name in GCP is separate from app name) |
-| `access_denied` after clicking Allow | Your email isn't in the Test Users list while app is unverified | Add test user under OAuth consent screen → Test users |
-| `invalid_grant: Token has been expired or revoked` | Refresh token revoked by user, or app moved to Production from Testing | Delete cached token JSON, re-run script for fresh OAuth |
+| `400. That's an error. The server cannot process the request because it is malformed.` | Requested scope is not listed on the OAuth consent screen, OR app metadata incomplete | Add the missing scope under OAuth consent screen → Scopes → Save. If scope IS listed, ensure all required app metadata fields are filled in. |
+| Browser shows wrong app name (e.g. "hermes" when project is "opencode") | OAuth consent screen "App name" field is stale | Edit App in consent screen → Branding tab, change name, Save (project name in GCP is separate from app name) |
+| `access_denied` after clicking Allow | Your email isn't in the Test Users list while app is unverified, OR app is in Testing and you're not a test user | Add test user under OAuth consent screen → Test users, OR publish the app |
+| `invalid_grant: Token has been expired or revoked` | Refresh token revoked: app in Testing status >7 days unused, user revoked at myaccount.google.com/permissions, or OAuth client regenerated | Delete cached token JSON, re-run script for fresh OAuth. Publish the app to prevent the 7-day issue. |
 | `403 quota exceeded` | Hit per-user or per-project quota | Check Console → APIs & Services → Quotas; usually pay-as-you-go quotas auto-raise |
 | `redirect_uri_mismatch` | Using web app client instead of Desktop client | Recreate as **Desktop app** type in Credentials |
 | Refresh token missing on subsequent runs | First auth used `prompt=none` or `access_type=online` | Use `flow.run_local_server()` which sets `access_type=offline`; revoke + re-auth if cached token lacks refresh |
@@ -158,14 +159,29 @@ if target:
 
 Schedule both possible UTC times → one is always the target local hour → script exits cleanly on the wrong one.
 
+## Publishing status (Testing vs Production)
+
+Two states for the OAuth consent screen, found under **Google Auth Platform → Audience** (new UI) or **OAuth consent screen → Publishing status** (old UI):
+
+| State | Behavior |
+|---|---|
+| **Testing** | Only emails listed under "Test users" can authorize. **Refresh tokens revoked after 7 days of inactivity** — user must re-auth via browser. |
+| **In production** | Anyone with a Google account can authorize (they'd see "unverified app" warning the first time, then proceed). **Refresh tokens don't expire from inactivity.** |
+
+**Publish for personal scripts.** The "anyone can authorize" sounds scary but means nothing in practice: tokens are issued per-user, only your account's tokens can read your data. Publishing only stops the 7-day refresh-token expiry. No Google verification process needed for low-risk readonly scopes (Calendar, Tasks, Drive, Gmail readonly) — verification is only required if requesting sensitive scopes (gmail.modify, drive full read/write of arbitrary files) AND going beyond 100 users.
+
+To publish: GCP Console → opencode project → APIs & Services → Audience → **Publish App**. 5-second confirmation dialog. Done.
+
+**The user's `opencode` GCP project (nodal-condition-493812-h4) is published as of 2026-04-20.** Refresh tokens won't expire from inactivity for any of `notify-daily`, `briefing-morning`, or `google-task-add`.
+
 ## Token rotation
 
 OAuth refresh tokens for personal Gmail accounts:
 - Don't expire by time (unlike GitHub PATs)
-- DO expire if app stays in "Testing" status for 7 days without use → re-auth required
+- DO expire if app stays in **Testing** status for 7 days without use → re-auth required
+- After **Publishing**: don't expire from inactivity
 - Revoked if user removes app at https://myaccount.google.com/permissions
-
-To avoid the 7-day expiry: publish the OAuth consent screen (still works for personal use, no Google verification needed for low-risk scopes — they just show "unverified app" warning).
+- Revoked if OAuth client is rotated/regenerated in GCP Credentials
 
 ## Anti-patterns
 
