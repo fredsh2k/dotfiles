@@ -20,7 +20,7 @@ DISCORD_LIMIT=1900
 LOCAL_TZ="${LOCAL_TZ:-Asia/Jerusalem}"
 
 # DST guard
-if [[ -n "${TARGET_HOUR:-}" ]]; then
+if [[ -n "${TARGET_HOUR:-}" && "${TARGET_HOUR}" != "skip" ]]; then
   current_hour=$(TZ="$LOCAL_TZ" date +%H)
   current_hour=$((10#$current_hour))  # strip leading zero
   if [[ "$current_hour" -ne "$TARGET_HOUR" ]]; then

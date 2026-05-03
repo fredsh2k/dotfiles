@@ -30,6 +30,6 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GH_TOKEN: ${{ secrets.GH_PAT }}
-          TARGET_HOUR: ${{ inputs.force && '' || '9' }}
+          TARGET_HOUR: ${{ inputs.force && 'skip' || '9' }}
           BRIEFING_USER: fredsh2k
         run: ./bin/briefing-morning

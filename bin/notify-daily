@@ -231,7 +231,7 @@ def post_discord(content: str) -> None:
 def main() -> None:
     # DST guard: in CI we schedule at multiple UTC times; only one matches local TARGET_HOUR.
     target_hour = os.environ.get("TARGET_HOUR")
-    if target_hour:
+    if target_hour and target_hour != "skip":
         now_local = dt.datetime.now(tz=LOCAL_TZ)
         if now_local.hour != int(target_hour):
             print(f"local hour {now_local.hour} != TARGET_HOUR {target_hour}, skipping")

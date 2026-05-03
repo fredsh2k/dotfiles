@@ -25,6 +25,7 @@ When analyzing gh pr checks failures, always save the logs to a file and use rip
 Do not reply to people comments on PRs.
 
 Before cloning any repo, always check if it already exists under /Users/fsherman/Code/GitHub/ first.
+Store all planning documents (e.g. `*-plan.md`, design notes, RFC drafts) in a `plans/` directory at the repo root. Create the directory if it doesn't exist.
 When researching internal GitHub infrastructure, platforms, or services, read the thehub repo at `/Users/fsherman/Code/GitHub/thehub` for documentation.
 
 Dotfiles live as a regular git clone at `~/Code/Personal/dotfiles`, with tracked files symlinked into `$HOME`.

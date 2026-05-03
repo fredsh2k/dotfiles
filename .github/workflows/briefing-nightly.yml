@@ -37,5 +37,5 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GOOGLE_OAUTH_CLIENT: ${{ secrets.GOOGLE_OAUTH_CLIENT }}
           GOOGLE_OAUTH_TOKEN: ${{ secrets.GOOGLE_OAUTH_TOKEN }}
-          TARGET_HOUR: ${{ inputs.force && '' || '22' }}
+          TARGET_HOUR: ${{ inputs.force && 'skip' || '22' }}
         run: ./bin/notify-daily
