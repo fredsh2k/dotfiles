@@ -39,6 +39,15 @@ else
   exit 1
 fi
 
+# Token sanity (CI debugging): identity + scopes + SSO orgs
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  echo "=== gh token sanity ==="
+  curl -sS -D - -o /dev/null -H "Authorization: token $GH_TOKEN" https://api.github.com/user \
+    | grep -iE '^(x-oauth-scopes|x-github-sso|x-accepted-oauth-scopes|HTTP/)' || true
+  echo "authenticated as: $(gh api user --jq .login 2>&1)"
+  echo "======================="
+fi
+
 post_discord() {
   local content="$1"
   content="${content:0:$DISCORD_LIMIT}"
