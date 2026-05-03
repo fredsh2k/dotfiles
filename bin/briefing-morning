@@ -42,10 +42,18 @@ fi
 post_discord() {
   local content="$1"
   content="${content:0:$DISCORD_LIMIT}"
-  curl -fsS -H 'Content-Type: application/json' \
+  local http_code
+  http_code=$(curl -sS -o /tmp/discord.out -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
     -H "User-Agent: briefing-morning/1.0" \
     -d "$(jq -nc --arg c "$content" '{content:$c}')" \
-    "$WEBHOOK" >/dev/null
+    "$WEBHOOK")
+  echo "discord POST -> HTTP $http_code (${#content} chars)"
+  if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
+    echo "discord response body:"
+    cat /tmp/discord.out
+    return 1
+  fi
 }
 
 render_items() {
@@ -95,26 +103,44 @@ section() {
   fi
 }
 
+# Helper: run a gh search; on failure, log to stderr and return [].
+gh_search() {
+  local out
+  if out=$(gh search "$@" 2>&1); then
+    echo "$out"
+  else
+    echo "gh search failed: $* -> $out" >&2
+    echo '[]'
+  fi
+}
+
 # 1. PRs awaiting my review (excluding bot PRs)
-prs_review_raw=$(gh search prs --review-requested=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,author 2>/dev/null || echo '[]')
+prs_review_raw=$(gh_search prs --review-requested="$ME" --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,author)
 prs_review_json=$(jq -c '.[]' <<<"$prs_review_raw" | filter_bots | jq -s '.')
 prs_review_count=$(jq 'length' <<<"$prs_review_json")
 prs_review=$(jq -c '.[]' <<<"$prs_review_json" | render_items)
 
 # 2. My open PRs needing attention
-my_prs_json=$(gh search prs --author=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,reviewDecision,statusCheckRollup,isDraft,author 2>/dev/null || echo '[]')
-my_prs_attn_json=$(jq '[.[] | select(.isDraft == false) | select(.reviewDecision == "CHANGES_REQUESTED" or ([.statusCheckRollup // [] | .[]?.conclusion] | any(. == "FAILURE")))]' <<<"$my_prs_json")
+# gh search prs doesn't support reviewDecision/statusCheckRollup, so fetch
+# the lightweight list via search, then enrich each PR with `gh pr view`.
+my_prs_basic=$(gh_search prs --author="$ME" --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,isDraft)
+my_prs_json=$(jq -c '.[] | select(.isDraft == false) | .url' <<<"$my_prs_basic" | while read -r url; do
+  url="${url//\"/}"
+  gh pr view "$url" --json url,title,reviewDecision,statusCheckRollup,isDraft,author 2>/dev/null \
+    | jq --arg url "$url" '. + {url: $url, repository: ($url | capture("github.com/(?<o>[^/]+)/(?<r>[^/]+)/") | {nameWithOwner: "\(.o)/\(.r)"})}'
+done | jq -s '.')
+my_prs_attn_json=$(jq '[.[] | select(.reviewDecision == "CHANGES_REQUESTED" or ([.statusCheckRollup // [] | .[]?.conclusion] | any(. == "FAILURE")))]' <<<"$my_prs_json")
 my_prs_attn_count=$(jq 'length' <<<"$my_prs_attn_json")
 my_prs_attn=$(jq -c '.[]' <<<"$my_prs_attn_json" | render_items)
 
 # 3. Issues assigned to me
-issues_assigned_json=$(gh search issues --assignee=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt 2>/dev/null || echo '[]')
+issues_assigned_json=$(gh_search issues --assignee="$ME" --state=open --archived=false --limit 50 --json url,title,repository,updatedAt)
 issues_assigned_count=$(jq 'length' <<<"$issues_assigned_json")
 issues_assigned=$(jq -c '.[]' <<<"$issues_assigned_json" | render_items)
 
 # 4. Issues I'm @-mentioned in (last 7 days)
 since=$(date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -v-7d +%Y-%m-%d)
-issues_mention_json=$(gh search issues --mentions=@me --state=open --archived=false --updated=">=$since" --limit 50 --json url,title,repository,updatedAt 2>/dev/null || echo '[]')
+issues_mention_json=$(gh_search issues --mentions="$ME" --state=open --archived=false --updated=">=$since" --limit 50 --json url,title,repository,updatedAt)
 issues_mention_json=$(jq --argjson assigned "$issues_assigned_json" '
   ($assigned | map(.url)) as $aurls
   | map(select(.url as $u | $aurls | index($u) | not))
@@ -123,8 +149,8 @@ issues_mention_count=$(jq 'length' <<<"$issues_mention_json")
 issues_mention=$(jq -c '.[]' <<<"$issues_mention_json" | render_items)
 
 # 5. PRs I'm @-mentioned in (excluding bots, my own, and already-listed-for-review)
-prs_mention_raw=$(gh search prs --mentions=@me --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,author 2>/dev/null || echo '[]')
-prs_mention_json=$(jq --arg me "$ME" --argjson review "$prs_review_json" --argjson mine "$my_prs_json" '
+prs_mention_raw=$(gh_search prs --mentions="$ME" --state=open --archived=false --limit 50 --json url,title,repository,updatedAt,author)
+prs_mention_json=$(jq --arg me "$ME" --argjson review "$prs_review_json" --argjson mine "$my_prs_basic" '
   (($review + $mine) | map(.url)) as $known
   | map(select(.author.login != $me and (.url as $u | $known | index($u) | not)))
 ' <<<"$prs_mention_raw")
@@ -151,7 +177,7 @@ discussions_count=$(jq 'length' <<<"$discussions_json")
 discussions=$(jq -c '.[]' <<<"$discussions_json" | render_items)
 
 # 7. My draft PRs
-my_drafts_json=$(jq '[.[] | select(.isDraft == true)]' <<<"$my_prs_json")
+my_drafts_json=$(jq '[.[] | select(.isDraft == true)]' <<<"$my_prs_basic")
 my_drafts_count=$(jq 'length' <<<"$my_drafts_json")
 my_drafts=$(jq -c '.[]' <<<"$my_drafts_json" | render_items)
 
