@@ -57,6 +57,13 @@ else
   skip "zsh-syntax-highlighting already installed"
 fi
 
+if [[ ! -d "$ZSH_CUSTOM/plugins/fzf-tab" ]]; then
+  info "Installing fzf-tab..."
+  git clone https://github.com/Aloxaf/fzf-tab "$ZSH_CUSTOM/plugins/fzf-tab" --depth=1
+else
+  skip "fzf-tab already installed"
+fi
+
 if [[ ! -d "$ZSH_CUSTOM/themes/spaceship-prompt" ]]; then
   info "Installing spaceship theme..."
   git clone https://github.com/spaceship-prompt/spaceship-prompt "$ZSH_CUSTOM/themes/spaceship-prompt" --depth=1
