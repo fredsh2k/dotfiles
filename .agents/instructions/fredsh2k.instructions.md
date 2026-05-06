@@ -3,7 +3,7 @@ applyTo: "**/*"
 ---
 
 Use zsh as the terminal shell.
-Use code-insiders over code for VS Code.
+Use code-insiders over code for VS Code. This applies everywhere, including `gh codespace code` (always pass `--insiders`) and any other tool that can launch VS Code.
 
 IMPORTANT: Always use modern CLI tools instead of legacy ones.
 ALWAYS use `rg` (ripgrep) instead of grep or built-in search tools
