@@ -30,3 +30,7 @@ vim.keymap.set("n", "<leader>yP", function()
   vim.fn.setreg("+", path)
   vim.notify("Copied: " .. path)
 end, { desc = "Yank absolute path" })
+
+vim.keymap.set("n", "<leader>fa", function()
+  Snacks.picker.files({ hidden = true, ignored = true })
+end, { desc = "Find files (all, incl. hidden/ignored)" })

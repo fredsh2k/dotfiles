@@ -6,3 +6,15 @@
 --
 -- Or remove existing autocmds by their group name (which is prefixed with `lazyvim_` for the defaults)
 -- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
+
+-- Force soft-wrap on every window enter. render-markdown.nvim and a few other
+-- plugins set window-local `wrap = false` (see render-markdown/lib/compat.lua),
+-- which survives until the window closes. This re-asserts our preference.
+vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, {
+  group = vim.api.nvim_create_augroup("force_softwrap", { clear = true }),
+  callback = function()
+    vim.wo.wrap = true
+    vim.wo.linebreak = true
+    vim.wo.breakindent = true
+  end,
+})
