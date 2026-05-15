@@ -15,6 +15,7 @@ plugins=(
   fzf-tab
 )
 
+ZVM_INIT_MODE=sourcing
 ZSH_AUTOSUGGEST_MANUAL_REBIND=1
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
@@ -22,9 +23,14 @@ ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)
 source $ZSH/oh-my-zsh.sh
 
 # vi mode & fzf
-# zvm_after_init is called by zsh-vi-mode after its own init (via precmd on first prompt)
-# This re-applies fzf key bindings which zvm would otherwise override
+# zsh-vi-mode rewrites widgets during first prompt init, so autosuggestions
+# must bind again afterward. fzf keybindings are normal/visual-mode bindings,
+# so zvm's lazy-keybinding callback is the safe place to restore them.
 function zvm_after_init() {
+  (( $+functions[_zsh_autosuggest_bind_widgets] )) && _zsh_autosuggest_bind_widgets
+}
+
+function zvm_after_lazy_keybindings() {
   [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 }
 # zsh-vi-mode: Homebrew path on macOS, oh-my-zsh custom plugin on Linux
@@ -131,8 +137,15 @@ opencode-start() {
   ( cd "$HOME" && opencode web --hostname 0.0.0.0 --port "$port" "$@" )
 }
 
-# Attach TUI to the running opencode web server
+# Start a fresh local TUI. The web server keeps long-lived session/model state,
+# so attaching here can revive stale sessions after config changes.
 opencode-tui() {
+  local dir="$PWD"
+  ( cd "$HOME/Code/Personal/opencode/packages/opencode" && command bun --conditions=browser ./src/index.ts --model "github-copilot/gpt-5.5" "$dir" "$@" )
+}
+
+# Explicitly attach to the shared opencode web server when desired.
+opencode-attach() {
   local port_file="$HOME/.opencode-port"
 
   if [[ ! -f "$port_file" ]]; then
@@ -196,4 +209,3 @@ $2"
     -d "$(jq -nc --arg c "$content" '{content:$c}')" \
     "$webhook" >/dev/null
 }
-
