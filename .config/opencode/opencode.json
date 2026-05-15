@@ -1,9 +1,41 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "github-copilot/claude-opus-4.7",
-  "permission": {
-    "external_directory": {
-      "~/**": "allow"
+  "model": "github-copilot/gpt-5.5",
+  "permission": "allow",
+  "mcp": {
+    "datadog": {
+      "type": "remote",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=all",
+      "enabled": true
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
+      "enabled": true,
+      "oauth": {}
+    },
+    "kusto": {
+      "type": "local",
+      "command": ["npx", "-y", "kusto-mcp@latest"],
+      "enabled": true,
+      "environment": {
+        "KUSTO_DEFAULT_CLUSTER": "https://gh-analytics.eastus.kusto.windows.net",
+        "KUSTO_DEFAULT_DATABASE": "hydro"
+      }
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--browser-url=http://127.0.0.1:9222",
+        "--no-usage-statistics"
+      ],
+      "enabled": true,
+      "environment": {
+        "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS": "true"
+      }
     }
   },
   "provider": {
