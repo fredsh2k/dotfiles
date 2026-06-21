@@ -1,5 +1,9 @@
 theme = GitHub Dark Dimmed
 
+# Open new Ghostty windows in the main workspace.
+working-directory = /Users/fsherman/Code
+window-inherit-working-directory = false
+
 # Unicode BiDi support for Hebrew RTL text
 grapheme-width-method = unicode
 
@@ -15,6 +19,9 @@ mouse-shift-capture = never
 
 # Cmd+E: paste scrollback temp file path (includes screen + history)
 keybind = cmd+e=write_scrollback_file:paste
+
+# Cmd+Shift+T: View > Change Tab Title...
+keybind = cmd+shift+t=prompt_tab_title
 
 # Navigate splits with Option+hjkl
 keybind = alt+h=goto_split:left

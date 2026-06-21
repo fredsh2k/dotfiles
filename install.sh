@@ -119,6 +119,24 @@ cd - >/dev/null
 ok "Dotfiles symlinked"
 
 # ---------------------------------------------------------------------------
+# Copilot skill symlinks
+# ---------------------------------------------------------------------------
+if command -v copilot &>/dev/null || [[ -d "$HOME/.copilot" ]]; then
+  info "Setting up Copilot skill symlinks..."
+  mkdir -p "$HOME/.copilot/skills" "$HOME/.copilot/instructions"
+
+  for skill in "$HOME/.agents/skills"/*/; do
+    name="$(basename "$skill")"
+    target="$HOME/.copilot/skills/$name"
+    [[ ! -L "$target" ]] && ln -s "$skill" "$target" && ok "  linked skill: $name"
+  done
+
+  instr_src="$HOME/.agents/instructions/fredsh2k.instructions.md"
+  instr_dst="$HOME/.copilot/instructions/fredsh2k.instructions.md"
+  [[ -f "$instr_src" && ! -L "$instr_dst" ]] && ln -s "$instr_src" "$instr_dst" && ok "  linked instructions"
+fi
+
+# ---------------------------------------------------------------------------
 # Set zsh as default shell
 # ---------------------------------------------------------------------------
 ZSH_PATH="$(command -v zsh)"

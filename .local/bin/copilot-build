@@ -1,0 +1,12 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+repo="$HOME/Code/GitHub/copilot-agent-runtime"
+
+if [[ ! -d "$repo" ]]; then
+  print -u2 "copilot-build: missing runtime checkout at $repo"
+  exit 1
+fi
+
+source "$HOME/.cargo/env"
+exec npm --prefix "$repo" run build

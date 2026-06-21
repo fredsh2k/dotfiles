@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+
+set -euo pipefail
+
+cd "$HOME/Code"
+
+if [[ "${TERM_PROGRAM:-}" == "ghostty" ]]; then
+  # Give Ghostty's scripting model a moment to register the new surface.
+  sleep 0.15
+
+  surface_count=$(osascript <<'APPLESCRIPT' 2>/dev/null || printf '0'
+tell application "Ghostty"
+  set w to front window
+  set t to selected tab of w
+  return ((count of tabs of w) as text) & ":" & ((count of terminals of t) as text)
+end tell
+APPLESCRIPT
+)
+
+  if [[ "$surface_count" != "1:1" ]]; then
+    exec /bin/zsh -l
+  fi
+fi
+
+exec /bin/zsh -lic 'opencode-tui'

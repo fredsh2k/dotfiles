@@ -4,8 +4,10 @@ return {
     picker = {
       sources = {
         explorer = {
+          auto_close = false,
           hidden = true,
           ignored = true,
+          jump = { close = false },
         },
         git_diff = {
           win = {

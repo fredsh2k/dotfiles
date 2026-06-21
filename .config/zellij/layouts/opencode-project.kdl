@@ -1,0 +1,12 @@
+layout {
+    tab name="opencode-project" {
+        pane split_direction="vertical" {
+            pane name="OpenCode" cwd="/Users/fsherman/Code" command="/bin/zsh" {
+                args "-lc" "source ~/.zshrc >/dev/null 2>&1 || true; exec opencode"
+            }
+            pane name="LazyVim" cwd="/Users/fsherman/Code" command="/bin/zsh" {
+                args "-lc" "source ~/.zshrc >/dev/null 2>&1 || true; exec nvim ."
+            }
+        }
+    }
+}

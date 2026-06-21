@@ -1,0 +1,18 @@
+{
+  "lspServers": {
+    "puppet": {
+      "command": "puppet-languageserver",
+      "args": ["--stdio"],
+      "env": {
+        "RBENV_VERSION": "3.4.6"
+      },
+      "fileExtensions": {
+        ".pp": "puppet",
+        ".epp": "epp"
+      },
+      "initializationTimeoutMs": 120000,
+      "spawnTimeoutMs": 30000,
+      "warmupTimeoutMs": 120000
+    }
+  }
+}

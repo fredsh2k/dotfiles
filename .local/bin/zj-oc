@@ -1,0 +1,94 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+usage() {
+  print "usage: zj-oc <repo-path|repo-name>"
+  print ""
+  print "Examples:"
+  print "  zj-oc ~/Code/Personal/dotfiles"
+  print "  zj-oc dotfiles"
+  print "  zj-oc app-registry"
+}
+
+if [[ $# -ne 1 ]]; then
+  usage >&2
+  exit 2
+fi
+
+input="$1"
+code_root="$HOME/Code"
+personal_root="$code_root/Personal"
+github_root="$code_root/GitHub"
+manager_path="$personal_root/opencode-manager"
+session_name="opencode-workspace"
+
+if [[ -d "$input" ]]; then
+  repo_path="${input:a}"
+elif [[ -d "$personal_root/$input" ]]; then
+  repo_path="$personal_root/$input"
+elif [[ -d "$github_root/$input" ]]; then
+  repo_path="$github_root/$input"
+else
+  print "zj-oc: repo not found under $personal_root or $github_root: $input" >&2
+  exit 1
+fi
+
+repo_name="${repo_path:t}"
+layout_file="${TMPDIR:-/tmp}/zellij-opencode-${repo_name}.kdl"
+
+write_project_layout() {
+  cat > "$layout_file" <<EOF
+layout {
+    tab name="$repo_name" {
+        pane split_direction="vertical" {
+            pane name="OpenCode" cwd="$code_root" command="/bin/zsh" {
+                args "-lc" "source ~/.zshrc >/dev/null 2>&1 || true; exec opencode"
+            }
+            pane name="LazyVim" cwd="$repo_path" command="/bin/zsh" {
+                args "-lc" "source ~/.zshrc >/dev/null 2>&1 || true; exec nvim ."
+            }
+        }
+    }
+}
+EOF
+}
+
+write_workspace_layout() {
+  if [[ ! -d "$manager_path" ]]; then
+    write_project_layout
+    return
+  fi
+
+  cat > "$layout_file" <<EOF
+layout {
+    tab name="opencode-manager" {
+        pane name="Manager" cwd="$manager_path" command="/bin/zsh" {
+            args "-lc" "source ~/.zshrc >/dev/null 2>&1 || true; bun run start"
+        }
+    }
+    tab name="$repo_name" {
+        pane split_direction="vertical" {
+            pane name="OpenCode" cwd="$code_root" command="/bin/zsh" {
+                args "-lc" "source ~/.zshrc >/dev/null 2>&1 || true; exec opencode"
+            }
+            pane name="LazyVim" cwd="$repo_path" command="/bin/zsh" {
+                args "-lc" "source ~/.zshrc >/dev/null 2>&1 || true; exec nvim ."
+            }
+        }
+    }
+}
+EOF
+}
+
+if [[ -n "${ZELLIJ:-}" ]]; then
+  write_project_layout
+  zellij action new-tab --name "$repo_name" --layout "$layout_file"
+else
+  if zellij list-sessions --short --no-formatting 2>/dev/null | rg --line-regexp --quiet "$session_name"; then
+    write_project_layout
+    zellij --session "$session_name" --layout "$layout_file"
+  else
+    write_workspace_layout
+    zellij --session "$session_name" --new-session-with-layout "$layout_file"
+  fi
+fi

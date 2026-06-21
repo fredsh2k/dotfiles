@@ -3,3 +3,9 @@
 
 # Local secrets (webhooks, tokens, etc.) — never tracked
 .config/secrets/
+
+# Local planning scratch files
+plans/
+
+# macOS Finder metadata
+.DS_Store

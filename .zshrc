@@ -59,6 +59,7 @@ export GOPATH='/Users/fsherman/go'
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
 export PATH="/Users/fsherman/go/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 
 # ruby - lazy load for speed
 export PATH="$HOME/.rbenv/bin:$PATH"
@@ -73,6 +74,9 @@ export HOMEBREW_REPOSITORY="/opt/homebrew"
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 export MANPATH="/opt/homebrew/share/man:${MANPATH:-}"
 export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}"
+
+# Local overrides (for pinned tools such as latest Neovim) should beat Homebrew.
+export PATH="$HOME/.local/bin:$PATH"
 
 alias g=git
 alias k=kubectl
@@ -140,6 +144,12 @@ opencode-start() {
 # Start a fresh local TUI. The web server keeps long-lived session/model state,
 # so attaching here can revive stale sessions after config changes.
 opencode-tui() {
+  local dir="$PWD"
+  command "$HOME/Code/Personal/opencode/.worktrees/local-compiled/packages/opencode/dist/opencode-darwin-arm64/bin/opencode" --model "github-copilot/gpt-5.5" "$dir" "$@"
+}
+
+# Run the local TypeScript source checkout when validating source edits.
+opencode-tui-source() {
   local dir="$PWD"
   ( cd "$HOME/Code/Personal/opencode/packages/opencode" && command bun --conditions=browser ./src/index.ts --model "github-copilot/gpt-5.5" "$dir" "$@" )
 }

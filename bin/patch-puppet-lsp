@@ -1,0 +1,103 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+package_root = File.expand_path('~/.local/share/nvim/mason/packages/puppet-editor-services/libexec')
+abort "missing #{package_root}; install puppet-editor-services with Mason first" unless Dir.exist?(package_root)
+
+patches = {
+  'lib/puppet-languageserver/global_queues/sidecar_queue.rb' => [
+    ["cmd = ['ruby', sidecar_path].concat(args)", "cmd = [Gem.ruby, sidecar_path].concat(args)"],
+  ],
+  'lib/puppet-languageserver/manifest/definition_provider.rb' => [
+    [
+      "        when 'Puppet::Pops::Model::ResourceExpression'\n" \
+      "          resource_name = item.type_name.value\n" \
+      "          response << type_or_class(session_state, resource_name)\n" \
+      "\n" \
+      "        else",
+      "        when 'Puppet::Pops::Model::ResourceExpression'\n" \
+      "          resource_name = item.type_name.value\n" \
+      "          response << type_or_class(session_state, resource_name)\n" \
+      "\n" \
+      "        when 'Puppet::Pops::Model::ResourceBody'\n" \
+      "          resource_expression = path.last\n" \
+      "          if resource_expression.instance_of?(::Puppet::Pops::Model::ResourceExpression)\n" \
+      "            resource_name = resource_expression.type_name.value\n" \
+      "            response << type_or_class(session_state, resource_name)\n" \
+      "          end\n" \
+      "\n" \
+      "        else",
+    ],
+  ],
+  'lib/puppet-languageserver-sidecar/puppet_helper.rb' => [
+    [
+      "      def initialize(puppet_env, object_types)\n" \
+      "        # Path to every module\n" \
+      "        @module_paths = puppet_env.modules.map(&:path)\n" \
+      "        # Path to the environment\n" \
+      "        @env_path = puppet_env.configuration.path_to_env",
+      "      def initialize(puppet_env, object_types)\n" \
+      "        # Path to every module\n" \
+      "        @module_paths = puppet_env.modules.map(&:path)\n" \
+      "        # Path to the environment\n" \
+      "        @env_path = if puppet_env.configuration.nil?\n" \
+      "                      PuppetLanguageServerSidecar::Workspace.root_path\n" \
+      "                    else\n" \
+      "                      puppet_env.configuration.path_to_env\n" \
+      "                    end",
+    ],
+    [
+      'return path.casecmp(root).zero? || path.start_with?(root + File::SEPARATOR)',
+      'return path.casecmp(root).zero? || path.start_with?(root + File::SEPARATOR) || root.start_with?(path + File::SEPARATOR)',
+    ],
+  ],
+  'lib/puppet-languageserver-sidecar/puppet_strings_helper.rb' => [
+    [
+      'JSON.generate(to_h, options)',
+      'JSON.generate(to_h, *options)',
+    ],
+  ],
+  'lib/puppet-languageserver-sidecar/puppet_environment_monkey_patches.rb' => [
+    [
+      "        env = Puppet::Node::Environment.create(\n" \
+      "          env_symbol,\n" \
+      "          Puppet::Node::Environment.split_path(setting_values.interpolate(:modulepath)),\n" \
+      "          setting_values.interpolate(:manifest),\n" \
+      "          setting_values.interpolate(:config_version)\n" \
+      "        )\n" \
+      "        return env",
+      "        conf = get_conf(name)\n" \
+      "        env = Puppet::Node::Environment.create(\n" \
+      "          env_symbol,\n" \
+      "          Puppet::Node::Environment.split_path(setting_values.interpolate(:modulepath)),\n" \
+      "          setting_values.interpolate(:manifest),\n" \
+      "          setting_values.interpolate(:config_version)\n" \
+      "        )\n" \
+      "        env.instance_variable_set(:@configuration, conf)\n" \
+      "        return env",
+    ],
+  ],
+}
+
+patches.each do |relative_path, replacements|
+  path = File.join(package_root, relative_path)
+  abort "missing #{path}" unless File.file?(path)
+
+  content = File.read(path)
+  updated = content.dup
+
+  replacements.each do |old_text, new_text|
+    if updated.include?(new_text)
+      next
+    elsif updated.include?(old_text)
+      updated = updated.sub(old_text, new_text)
+    else
+      abort "unable to patch #{path}: expected text not found"
+    end
+  end
+
+  next if updated == content
+
+  File.write(path, updated)
+  puts "patched #{path}"
+end
