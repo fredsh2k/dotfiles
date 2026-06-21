@@ -9,7 +9,7 @@ description: Use when starting feature work that needs isolation from current wo
 
 Ensure work happens in an isolated workspace. Prefer your platform's native worktree tools. Fall back to manual git worktrees only when no native tool is available.
 
-**Core principle:** Detect existing isolation first. Then use native tools. Then fall back to git. Never fight the harness.
+**Core principle:** Detect existing isolation first. Refresh the default branch before creating new work. Then use native tools. Then fall back to git. Never fight the harness.
 
 **Announce at start:** "I'm using the using-git-worktrees skill to set up an isolated workspace."
 
@@ -44,7 +44,39 @@ Has the user already indicated their worktree preference in your instructions? I
 
 Honor any existing declared preference without asking. If the user declines consent, work in place and skip to Step 3.
 
-## Step 1: Create Isolated Workspace
+## Step 1: Refresh Default Branch
+
+Before creating a new worktree, make the base as current as possible.
+
+1. Identify the default branch:
+   ```bash
+   default_branch=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+   if [ -z "$default_branch" ]; then
+     if git show-ref --verify --quiet refs/heads/main || git show-ref --verify --quiet refs/remotes/origin/main; then
+       default_branch=main
+     else
+       default_branch=master
+     fi
+   fi
+   ```
+
+2. Fetch latest refs:
+   ```bash
+   git fetch origin
+   ```
+
+3. If the current worktree is clean and the local default branch exists and can be checked out safely, fast-forward it before branching:
+   ```bash
+   git status --short
+   git switch "$default_branch"
+   git pull --ff-only
+   ```
+
+4. If the current worktree is dirty, the local default branch has local/unmerged work, cannot be checked out, or `pull --ff-only` fails, do not stash, reset, merge, or repair it as part of this workflow. Base the new worktree on `origin/$default_branch` instead and report the fallback.
+
+5. Use the updated local default branch as the worktree base when the refresh succeeds. Use `origin/$default_branch` only for the fallback case.
+
+## Step 2: Create Isolated Workspace
 
 **You have two mechanisms. Try them in this order.**
 
@@ -52,17 +84,17 @@ Honor any existing declared preference without asking. If the user declines cons
 
 For non-trivial work, use separate worktrees for plan iteration and implementation when practical. The plan worktree is a local-only branch for `plans/` checkpoint commits so LazyVim/Diffview can review incremental plan changes; never push, merge, or PR it. The implementation worktree contains code changes intended for the real branch/PR. Keep both based on the same upstream branch unless the human partner asks otherwise.
 
-### 1a. Native Worktree Tools (preferred)
+### 2a. Native Worktree Tools (preferred)
 
-The user has asked for an isolated workspace (Step 0 consent). Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 3.
+The user has asked for an isolated workspace (Step 0 consent). Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it after Step 1 and skip to Step 3.
 
 Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
 
-Only proceed to Step 1b if you have no native worktree tool available.
+Only proceed to Step 2b if you have no native worktree tool available.
 
-### 1b. Git Worktree Fallback
+### 2b. Git Worktree Fallback
 
-**Only use this if Step 1a does not apply** — you have no native worktree tool available. Create a worktree manually using git.
+**Only use this if Step 2a does not apply** - you have no native worktree tool available. Create a worktree manually using git.
 
 #### Directory Selection
 
@@ -109,9 +141,11 @@ project=$(basename "$(git rev-parse --show-toplevel)")
 # For project-local: path="$LOCATION/$BRANCH_NAME"
 # For global: path="~/.config/superpowers/worktrees/$project/$BRANCH_NAME"
 
-git worktree add "$path" -b "$BRANCH_NAME"
+git worktree add "$path" -b "$BRANCH_NAME" "$base_ref"
 cd "$path"
 ```
+
+Where `base_ref` is the updated local default branch from Step 1, or `origin/$default_branch` only if Step 1 had to fall back.
 
 **Sandbox fallback:** If `git worktree add` fails with a permission error (sandbox denial), tell the user the sandbox blocked worktree creation and you're working in the current directory instead. Then run setup and baseline tests in place.
 
@@ -161,9 +195,9 @@ Ready to implement <feature-name>
 |-----------|--------|
 | Already in linked worktree | Skip creation (Step 0) |
 | In a submodule | Treat as normal repo (Step 0 guard) |
-| Native worktree tool available | Use it (Step 1a) |
+| Native worktree tool available | Refresh default branch, then use it (Step 2a) |
 | Need reviewable plan changes | Use a local-only plan worktree/branch, separate from implementation |
-| No native tool | Git worktree fallback (Step 1b) |
+| No native tool | Git worktree fallback (Step 2b) |
 | `.worktrees/` exists | Use it (verify ignored) |
 | `worktrees/` exists | Use it (verify ignored) |
 | Both exist | Use `.worktrees/` |
@@ -171,6 +205,7 @@ Ready to implement <feature-name>
 | Global path exists | Use it (backward compat) |
 | Directory not ignored | Add to .gitignore + commit |
 | Permission error on create | Sandbox fallback, work in place |
+| Local default branch cannot be safely fast-forwarded | Fetch and base worktree on origin/default branch |
 | Tests fail during baseline | Report failures + ask |
 | No package.json/Cargo.toml | Skip dependency install |
 
@@ -179,7 +214,12 @@ Ready to implement <feature-name>
 ### Fighting the harness
 
 - **Problem:** Using `git worktree add` when the platform already provides isolation
-- **Fix:** Step 0 detects existing isolation. Step 1a defers to native tools.
+- **Fix:** Step 0 detects existing isolation. Step 2a defers to native tools.
+
+### Starting from stale base
+
+- **Problem:** Creating a worktree from an old local `main` or `master`, then needing to merge upstream later
+- **Fix:** Step 1 fetches and fast-forwards the local default branch before worktree creation whenever safe.
 
 ### Skipping detection
 
@@ -206,13 +246,15 @@ Ready to implement <feature-name>
 **Never:**
 - Create a worktree when Step 0 detects existing isolation
 - Use `git worktree add` when you have a native worktree tool (e.g., `EnterWorktree`). This is the #1 mistake — if you have it, use it.
-- Skip Step 1a by jumping straight to Step 1b's git commands
+- Skip refreshing the default branch before creating a new worktree, unless you report why fallback to `origin/<default>` was required
+- Skip Step 2a by jumping straight to Step 2b's git commands
 - Create worktree without verifying it's ignored (project-local)
 - Skip baseline test verification
 - Proceed with failing tests without asking
 
 **Always:**
 - Run Step 0 detection first
+- Fetch and fast-forward the local default branch before creating a new worktree when safe
 - Prefer native tools over git fallback
 - Follow directory priority: existing > global legacy > instruction file > default
 - Verify directory is ignored for project-local
