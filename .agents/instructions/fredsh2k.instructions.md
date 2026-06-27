@@ -56,8 +56,6 @@ Use one Ghostty instance with herdr. A herdr workspace is a single task/project 
 
 The local opencode source checkout lives at `~/Code/Personal/opencode`. When changing opencode behavior or adding local features, edit source files in that repo rather than installed files under `~/.opencode/`.
 
-Use the `opencode-tui` zsh function for the fast local compiled build against the current repo. Use `opencode-tui-source` when validating source edits; it changes into `~/Code/Personal/opencode/packages/opencode` and runs `src/index.ts` with Bun, passing the original working directory as the project path. Plain `opencode` still resolves to the installed binary at `~/.opencode/bin/opencode` and will not include local source edits.
-
 For opencode source changes, follow the repo instructions in `~/Code/Personal/opencode/AGENTS.md` and `~/Code/Personal/opencode/packages/opencode/AGENTS.md`. Run tests from package directories such as `~/Code/Personal/opencode/packages/opencode`; never run package tests from the opencode repo root.
 
-If a local feature needs manual TUI validation, tell me to run `source ~/.zshrc && opencode-tui-source` in the relevant repo pane. If startup speed matters more than local source edits, use installed `opencode`, `opencode-tui`, or `opencode-attach` instead, because the local Bun TypeScript launcher is slower than the compiled installed binary.
+For local opencode source changes that need manual TUI validation, tell me to run `cd ~/Code/Personal/opencode/packages/opencode && bun --conditions=browser ./src/index.ts <project-path>`. For normal use, use the official installed `opencode`, `opencode-start`, and `opencode-attach` commands.

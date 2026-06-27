@@ -138,20 +138,7 @@ opencode-start() {
   echo "  local:  http://localhost:$port"
   echo "  phone:  http://100.85.21.13:$port"
   echo ""
-  ( cd "$HOME" && opencode web --hostname 0.0.0.0 --port "$port" "$@" )
-}
-
-# Start a fresh local TUI. The web server keeps long-lived session/model state,
-# so attaching here can revive stale sessions after config changes.
-opencode-tui() {
-  local dir="$PWD"
-  command "$HOME/Code/Personal/opencode/.worktrees/local-compiled/packages/opencode/dist/opencode-darwin-arm64/bin/opencode" --model "github-copilot/gpt-5.5" "$dir" "$@"
-}
-
-# Run the local TypeScript source checkout when validating source edits.
-opencode-tui-source() {
-  local dir="$PWD"
-  ( cd "$HOME/Code/Personal/opencode/packages/opencode" && command bun --conditions=browser ./src/index.ts --model "github-copilot/gpt-5.5" "$dir" "$@" )
+  ( cd "$HOME" && opencode web --hostname 0.0.0.0 --port "$port" --mdns "$@" )
 }
 
 # Explicitly attach to the shared opencode web server when desired.
@@ -180,6 +167,152 @@ opencode-url() {
   local port
   port=$(cat "$port_file")
   echo "http://100.85.21.13:$port"
+}
+
+# Update the local CLI/dev toolchain without upgrading every GUI app by default.
+devtools-update() {
+  local mode="update"
+  if [[ "${1:-}" == "--check" ]]; then
+    mode="check"
+  elif [[ "${1:-}" == "--greedy" ]]; then
+    mode="greedy"
+  elif [[ -n "${1:-}" ]]; then
+    echo "usage: devtools-update [--check|--greedy]" >&2
+    return 2
+  fi
+
+  local -a brew_tools=(
+    gh lazygit ripgrep fd sd jq yq fzf tmux node watchman
+    kubernetes-cli kubectx kustomize helm minikube kind hadolint
+    go golangci-lint gopls ruby-build rbenv ruby rust rustup uv pipx neovim
+  )
+
+  if [[ "$mode" == "check" ]]; then
+    _devtools_versions
+    _devtools_check npm npm outdated -g --depth=0
+    _devtools_check brew brew outdated --greedy "${brew_tools[@]}"
+    _devtools_check gem gem outdated
+    _devtools_check rustup rustup check
+    _devtools_update_go_bins check
+    _devtools_update_superpowers check
+    return
+  fi
+
+  _devtools_run herdr herdr update
+  _devtools_run opencode opencode upgrade
+  _devtools_run copilot copilot update
+  _devtools_run bun bun upgrade
+  _devtools_run npm npm update -g
+  _devtools_run corepack corepack install -g pnpm@latest yarn@latest
+  _devtools_run rustup rustup update stable
+  _devtools_run gem gem update --system
+  _devtools_run gem gem update
+
+  if command -v brew >/dev/null; then
+    brew update
+    if [[ "$mode" == "greedy" ]]; then
+      brew upgrade --greedy
+    else
+      brew upgrade "${brew_tools[@]}"
+    fi
+  fi
+
+  _devtools_update_go_bins update
+  _devtools_update_superpowers update
+  _devtools_run rbenv rbenv rehash
+
+  echo ""
+  echo "Updated dev tools. Current versions:"
+  _devtools_versions
+}
+
+_devtools_run() {
+  local label="$1"
+  shift
+
+  command -v "$1" >/dev/null || return 0
+  echo "==> $label: $*"
+  "$@" || echo "devtools-update: $label failed" >&2
+}
+
+_devtools_check() {
+  local label="$1"
+  shift
+
+  command -v "$1" >/dev/null || return 0
+  echo "==> $label: $*"
+  "$@" || true
+}
+
+_devtools_update_superpowers() {
+  local upstream="$HOME/Code/GitHub/superpowers"
+  local vendored="$HOME/Code/Personal/dotfiles/.config/opencode/superpowers"
+  [[ -d "$upstream/.git" && -d "$vendored" ]] || return 0
+
+  if [[ "$1" == "check" ]]; then
+    echo "==> superpowers: compare upstream checkout to dotfiles vendored copy"
+    rsync -ani --checksum --delete --exclude .git --exclude 'skills/using-git-worktrees/SKILL.md' "$upstream/" "$vendored/" || true
+    return
+  fi
+
+  echo "==> superpowers: update upstream checkout and sync into dotfiles"
+  git -C "$upstream" fetch origin main || {
+    echo "devtools-update: superpowers fetch failed" >&2
+    return 0
+  }
+
+  if [[ -n "$(git -C "$upstream" status --short)" ]]; then
+    echo "devtools-update: superpowers checkout is dirty, skipping sync: $upstream" >&2
+    return 0
+  fi
+
+  git -C "$upstream" merge --ff-only origin/main || {
+    echo "devtools-update: superpowers fast-forward failed" >&2
+    return 0
+  }
+
+  rsync -a --delete --exclude .git --exclude 'skills/using-git-worktrees/SKILL.md' "$upstream/" "$vendored/" || {
+    echo "devtools-update: superpowers sync failed" >&2
+    return 0
+  }
+}
+
+_devtools_update_go_bins() {
+  command -v go >/dev/null || return 0
+  command -v rg >/dev/null || return 0
+
+  local gopath
+  gopath=$(go env GOPATH 2>/dev/null) || return 0
+  [[ -d "$gopath/bin" ]] || return 0
+
+  local bin module
+  for bin in "$gopath"/bin/*(N.); do
+    module=$(go version -m "$bin" 2>/dev/null | rg '^\tpath\t' | cut -f3)
+    [[ -n "$module" && "$module" == */* && "$module" != command-line-arguments ]] || continue
+
+    if [[ "$1" == "check" ]]; then
+      echo "go tool: ${bin:t} <- $module"
+    else
+      echo "==> go tool: ${bin:t} <- $module@latest"
+      go install "$module@latest" || echo "devtools-update: go install failed for $module" >&2
+    fi
+  done
+}
+
+_devtools_versions() {
+  local cmd
+  for cmd in herdr opencode copilot gh bun npm node ruby gem go golangci-lint gopls rustup rustc cargo uv pipx nvim lazygit rg fd sd jq yq fzf kubectl helm; do
+    command -v "$cmd" >/dev/null || continue
+    echo "== $cmd =="
+    case "$cmd" in
+      copilot) copilot version ;;
+      kubectl) kubectl version --client ;;
+      helm) helm version ;;
+      go) go version ;;
+      gem) gem --version ;;
+      *) "$cmd" --version 2>/dev/null || "$cmd" version 2>/dev/null || true ;;
+    esac | head -n 4
+  done
 }
 
 # Send a Discord notification via webhook.

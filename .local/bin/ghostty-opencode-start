@@ -22,4 +22,4 @@ APPLESCRIPT
   fi
 fi
 
-exec /bin/zsh -lic 'opencode-tui'
+exec /bin/zsh -lic 'opencode'
