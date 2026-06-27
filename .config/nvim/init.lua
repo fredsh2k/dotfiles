@@ -432,6 +432,22 @@ local function pick_recent_project_files()
     seen[path] = true
     table.insert(items, path:sub(#root + 2))
   end
+  local show = function(buf_id, entries)
+    local lines = {}
+    local extmarks = {}
+    for index, path in ipairs(entries) do
+      local icon, hl = require("mini.icons").get("file", vim.fs.joinpath(root, path))
+      lines[index] = icon .. "  " .. path
+      extmarks[index] = { hl = hl, col = 0, end_col = #icon }
+    end
+    vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
+    for line, mark in ipairs(extmarks) do
+      vim.api.nvim_buf_set_extmark(buf_id, vim.api.nvim_create_namespace("recent_files_icons"), line - 1, mark.col, {
+        end_col = mark.end_col,
+        hl_group = mark.hl,
+      })
+    end
+  end
 
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].buftype == "" then
@@ -452,6 +468,7 @@ local function pick_recent_project_files()
       items = items,
       name = "Recent files",
       cwd = root,
+      show = show,
     },
   })
 end
@@ -642,7 +659,7 @@ end, { desc = "Next diagnostic" })
 vim.keymap.set("n", "<leader>xd", vim.diagnostic.open_float, { desc = "Line diagnostic" })
 wk.add({ { "<leader>x", group = "diagnostics" } })
 
--- Directory startup: open README and native side explorer.
+-- Directory startup: keep tab-local cwd without opening a file or explorer.
 vim.api.nvim_create_autocmd("VimEnter", {
   group = vim.api.nvim_create_augroup("open_dir_readme_explorer", { clear = true }),
   callback = function()
@@ -655,13 +672,6 @@ vim.api.nvim_create_autocmd("VimEnter", {
     end
     dir = vim.fn.fnamemodify(dir, ":p:h")
     vim.cmd.tcd(vim.fn.fnameescape(dir))
-    local readme = vim.fs.find(function(name)
-      return name:lower():match("^readme") ~= nil
-    end, { path = dir, type = "file", limit = 1 })[1]
-    if readme then
-      vim.cmd.edit(vim.fn.fnameescape(readme))
-    end
-    vim.schedule(toggle_explorer)
   end,
 })
 
