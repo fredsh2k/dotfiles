@@ -1,5 +1,7 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
 
 -- Native-first Neovim config. Learn stock commands before adding plugins.
 
@@ -46,7 +48,11 @@ vim.cmd.colorscheme("github_dark_dimmed")
 
 require("mini.extra").setup()
 require("mini.icons").setup()
-require("mini.files").setup()
+require("mini.files").setup({
+  options = {
+    use_as_default_explorer = false,
+  },
+})
 require("mini.pick").setup()
 
 require("which-key").setup({
