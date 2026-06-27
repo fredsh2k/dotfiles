@@ -416,6 +416,46 @@ local function git_pr_diff(base)
   vim.bo[buf].modifiable = false
 end
 
+local function pick_recent_project_files()
+  local root = vim.fs.normalize(project_root())
+  local items = {}
+  local seen = {}
+
+  local add_path = function(path)
+    if path == "" then
+      return
+    end
+    path = vim.fs.normalize(path)
+    if seen[path] or vim.fn.filereadable(path) ~= 1 or not vim.startswith(path, root .. "/") then
+      return
+    end
+    seen[path] = true
+    table.insert(items, path:sub(#root + 2))
+  end
+
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].buftype == "" then
+      add_path(vim.api.nvim_buf_get_name(buf))
+    end
+  end
+  for _, path in ipairs(vim.v.oldfiles) do
+    add_path(path)
+  end
+
+  if #items == 0 then
+    vim.notify("No recent files in " .. root, vim.log.levels.INFO)
+    return
+  end
+
+  require("mini.pick").start({
+    source = {
+      items = items,
+      name = "Recent files",
+      cwd = root,
+    },
+  })
+end
+
 local function toggle_explorer()
   local current = vim.api.nvim_buf_get_name(0)
   if current == "" or vim.startswith(current, "minifiles:") then
@@ -429,9 +469,7 @@ vim.keymap.set("n", "<leader>e", toggle_explorer, { desc = "Explorer" })
 vim.keymap.set("n", "<leader>ff", function()
   require("mini.pick").builtin.files({ tool = "git" })
 end, { desc = "Find files" })
-vim.keymap.set("n", "<leader>fr", function()
-  require("mini.extra").pickers.oldfiles({ current_dir = true })
-end, { desc = "Recent files" })
+vim.keymap.set("n", "<leader>fr", pick_recent_project_files, { desc = "Recent files" })
 vim.keymap.set("n", "<leader>fg", function()
   require("mini.pick").builtin.grep({ tool = "rg" }, { source = { cwd = project_root() } })
 end, { desc = "Grep text" })
